@@ -103,3 +103,26 @@ This foundation sets the tone for all upcoming sprints — including API integra
 ![BinBuddy App Running](./public/app_running.png)
 
 ---
+
+## 🧩 Code Quality Configuration
+
+### 🔹 Why Strict TypeScript Mode Reduces Runtime Bugs
+Enabling strict mode in TypeScript enforces strong type checking, catches potential errors during development, and prevents undefined or invalid type issues at runtime.
+
+---
+
+### 🔹 What ESLint + Prettier Rules Enforce
+- **ESLint:** Detects syntax errors, unused variables, and enforces clean coding practices.  
+- **Prettier:** Formats code consistently (semicolons, quotes, spacing).  
+Together, they maintain a uniform and readable code style.
+
+---
+
+### 🔹 How Pre-Commit Hooks Improve Team Consistency
+Pre-commit hooks (via Husky + lint-staged) automatically lint and format staged files before commits, ensuring every commit follows project standards and preventing unformatted or buggy code from being pushed.
+
+---
+
+### 🔹 Screenshots / Logs
+
+![ESLint and Prettier in Action](./public/lint_testing.png)
