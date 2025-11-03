@@ -126,3 +126,23 @@ Pre-commit hooks (via Husky + lint-staged) automatically lint and format staged 
 ### 🔹 Screenshots / Logs
 
 ![ESLint and Prettier in Action](./public/lint_testing.png)
+
+##  Environment Variables
+
+### Purpose
+Environment variables are used to securely manage API keys, database URLs, and other sensitive configurations.
+
+### Files
+**.env.local** – stores actual credentials, never committed.
+**.env.example** – template with placeholder values for team members.
+
+### Variable Types
+| Variable | Scope | Description |
+|-----------|--------|-------------|
+| DATABASE_URL | Server | PostgreSQL connection string |
+| NEXT_PUBLIC_API_BASE_URL | Client | Public API endpoint |
+
+### Setup Steps
+1. Duplicate .env.example → .env.local
+2. Fill in actual credentials.
+3. Run npm run dev to start the app.
