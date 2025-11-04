@@ -279,3 +279,45 @@ The seed file inserts:
 - Screenshot of seeded data shown in **Prisma Studio**  
 ![Prisma Studio Seeded Data](./public/prisma_studio.png)
 
+##  Dockerfile Explanation
+
+The `Dockerfile` builds and runs the app inside a lightweight Node.js container.
+
+- **Stage 1 (Builder):**
+  - Uses `node:20-alpine` for a clean build.
+  - Installs dependencies with `npm ci`.
+  - Builds the optimized Next.js app.
+- **Stage 2 (Runner):**
+  - Copies the build output.
+  - Removes Husky’s prepare script to avoid production errors.
+  - Installs only production dependencies.
+  - Exposes port `3000` and starts the app with `npm run start`.
+
+###  Networks
+- The project uses a single **bridge network** named `appnet`.
+- This network isolates the container from other local apps and allows internal communication if additional services (like APIs or workers) are added later.
+- It ensures consistent networking between containers when scaling.
+
+###  Environment Variables
+Environment variables are defined in a `.env` file (loaded via `env_file` in `docker-compose.yml`) and passed to the app container.
+DATABASE_URL — connects the app to the Neon-hosted PostgreSQL database.
+
+REDIS_URL — connects securely to the Upstash Redis instance (TLS).
+
+NODE_ENV — ensures the app runs in optimized production mode.
+
+###  Reflection on Issues Faced and Fixes
+
+| Issue | Description | Solution |
+|--------|--------------|-----------|
+| **Husky Build Error** | Husky’s `prepare` script caused `husky: not found` errors during the Docker build. | Removed the script using `npm pkg delete scripts.prepare` before installing production dependencies. |
+| **Missing Environment Variables** | Docker Compose didn’t detect `.env` values initially. | Added `env_file: - .env` under the `app` service in `docker-compose.yml`. |
+| **TypeScript Redis Error** | TypeScript threw `string \| undefined` errors for `process.env.REDIS_URL`. | Added a runtime check and non-null assertion in `src/lib/redis.ts` to ensure the variable exists. |
+| **Version Warning** | `version: '3.9'` in `docker-compose.yml` triggered a deprecation warning. | Removed the `version` key as it’s obsolete in Docker Compose v2+. |
+
+
+## Screenshots showing successful builds and running containers
+
+![Docker Running](./public/docker-running.png)
+---
+![Docker Logs](./public/docker_containers.png)

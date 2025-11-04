@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    container_name: nextjs_app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
