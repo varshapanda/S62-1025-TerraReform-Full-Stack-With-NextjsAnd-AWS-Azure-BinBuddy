@@ -1,0 +1,113 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Entity 1: User
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String?
+  googleId      String?        @unique
+  points        Int            @default(0)
+  role          String         @default("user")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relationships
+  reports       Report[]
+  claimedTasks  Task[]
+  notifications Notification[]
+  rewards       Reward[]
+  
+  // Indexes for faster queries
+  @@index([email])
+  @@index([points])
+}
+
+// Entity 2: Report (Waste Reports)
+model Report {
+  id            Int      @id @default(autoincrement())
+  imageUrl      String
+  location      String
+  latitude      Float?
+  longitude     Float?
+  wasteType     String?
+  wasteCategory String?
+  verified      Boolean  @default(false)
+  status        String   @default("pending")
+  userId        Int
+  
+  // Foreign Key Relationship
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task          Task?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Indexes for faster queries
+  @@index([userId])
+  @@index([status])
+}
+
+// Entity 3: Task (Collection Tasks)
+model Task {
+  id          Int       @id @default(autoincrement())
+  reportId    Int       @unique
+  status      String    @default("available")
+  claimedBy   Int?
+  claimedAt   DateTime?
+  completedAt DateTime?
+  
+  // Foreign Key Relationships
+  report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  collector   User?     @relation(fields: [claimedBy], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Indexes for faster queries
+  @@index([status])
+  @@index([claimedBy])
+}
+
+// Entity 4: Reward (Points History)
+model Reward {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  points      Int
+  action      String
+  description String
+  
+  // Foreign Key Relationship
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  // Index for faster queries
+  @@index([userId])
+}
+
+// Entity 5: Notification (User Notifications)
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  
+  // Foreign Key Relationship
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  // Indexes for faster queries
+  @@index([userId])
+  @@index([read])
+}
