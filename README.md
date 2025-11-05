@@ -321,3 +321,106 @@ NODE_ENV — ensures the app runs in optimized production mode.
 ![Docker Running](./public/docker-running.png)
 ---
 ![Docker Logs](./public/docker_containers.png)
+
+
+# Prisma ORM Setup & Client Initialization
+
+## Prisma Setup Commands & Configuration
+
+Before initializing the Prisma client and database connection, Prisma ORM was installed and configured in the project using the following steps:
+
+1. **Install Prisma Packages**  
+   Installed Prisma and its client library:  
+   ```
+   npm install prisma --save-dev
+   npm install @prisma/client
+   ```
+
+2. **Initialize Prisma**  
+   Initialized Prisma in the project root, creating a `prisma/` directory with a default schema and environment file:  
+   ```
+   npx prisma init
+   ```
+
+3. **Configure the Database Connection**  
+   Updated the `.env.local` file with the PostgreSQL connection string:  
+   ```
+   DATABASE_URL="postgresql://postgres:password@localhost:5432/binbuddy_db"
+   ```  
+   This configuration allows Prisma to connect directly to the local PostgreSQL instance.
+
+4. **Generate the Prisma Client**  
+   After defining the models in `prisma/schema.prisma`, generated the Prisma client to enable type-safe queries:  
+   ```
+   npx prisma generate
+   ```
+
+5. **Push Schema and Apply Migrations**  
+   Applied the schema to the database and created migration history for tracking structural changes:  
+   ```
+   npx prisma migrate dev --name init_schema
+   ```
+
+6. **Seed the Database (Optional)**  
+   Inserted sample users, reports, tasks, rewards, and notifications:  
+   ```
+   npx prisma db seed
+   ```
+
+After these setup steps, Prisma was fully configured and ready to be integrated into the application.
+
+---
+
+## Purpose of Prisma ORM in the Project
+
+Prisma ORM bridges the backend and database layers of the project. It provides type-safe, auto-generated queries that help developers interact with PostgreSQL efficiently while ensuring schema consistency. This integration enhances reliability, improves developer productivity, and minimizes runtime database errors.
+
+---
+
+## Setup Steps Followed
+
+1. **Initialized Prisma Client** — A development-safe Prisma client instance was added in `src/lib/prisma.ts` using the singleton pattern. This ensures a single database connection is maintained across hot reloads during development.  
+2. **Added a Test API Route** — Implemented an API endpoint in `src/app/api/test-db/route.ts` to verify database connectivity. This route successfully fetched entity counts and sample user data from the PostgreSQL database.  
+3. **Verified Connection** — After running the development server, Prisma established a PostgreSQL connection, executed multiple queries, and returned a successful JSON response.  
+
+---
+
+## Prisma Schema Overview
+
+The schema includes five main entities — **User**, **Report**, **Task**, **Reward**, and **Notification** — each with clearly defined relationships and indexing for optimized querying.  
+The models are normalized and follow 3NF design principles to ensure scalability and data consistency.  
+Key relationships include:
+- One user can create many reports, rewards, and notifications.
+- Each report is linked to one user and optionally one task.
+- Tasks can be claimed by users, with one-to-one linkage to reports.
+- Rewards and notifications are tied to user actions and events.
+
+---
+
+## Evidence and Screenshots
+
+- Successful API response from `/api/test-db`  
+  ![API Response](./public/api-test.png)
+
+- Terminal logs showing Prisma queries and DB connection  
+  ![Terminal Output](./public/terminal-output.png)
+
+- Seeded data viewed in Prisma Studio  
+  ![Prisma Studio](./public/seed_data.png)
+
+---
+
+## Reflection
+
+Integrating Prisma ORM into the project provided several key benefits:
+
+- **Type Safety:** Prevents invalid queries by enforcing schema-level typing.  
+- **Query Reliability:** Automatically generates schema-consistent database queries.  
+- **Developer Productivity:** Provides autocomplete, query validation, and fast iteration cycles.  
+- **Maintainability:** Centralized schema ensures clear version control and easy migrations.  
+- **Scalability:** Supports complex relationships while maintaining efficient performance.
+
+---
+
+**Outcome:**  
+The Prisma ORM setup and client initialization were successfully completed. The database connection has been verified with live queries, and the setup is now stable for use across the project’s backend modules.
