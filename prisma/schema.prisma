@@ -24,6 +24,7 @@ model User {
   claimedTasks  Task[]
   notifications Notification[]
   rewards       Reward[]
+   images        Image[] 
   
   // Indexes for faster queries
   @@index([email])
@@ -46,6 +47,7 @@ model Report {
   // Foreign Key Relationship
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   task          Task?
+   images        Image[] 
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -70,6 +72,7 @@ model Task {
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  
   
   // Indexes for faster queries
   @@index([status])
@@ -110,4 +113,21 @@ model Notification {
   // Indexes for faster queries
   @@index([userId])
   @@index([read])
+}
+// Entity 6: Image (Uploaded Images)
+model Image {
+  id        Int      @id @default(autoincrement())
+  url       String
+  reportId  Int?
+  uploadedBy Int?
+  
+  // Relationships
+  report    Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reportId])
+  @@index([uploadedBy])
 }

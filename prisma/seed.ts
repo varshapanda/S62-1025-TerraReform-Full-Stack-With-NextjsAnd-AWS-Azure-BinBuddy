@@ -181,6 +181,35 @@ async function main() {
     },
   });
   console.log("Created notification for user3");
+  // Create Images for reports
+  const images = await prisma.image.createMany({
+    data: [
+      {
+        url: "https://example.com/images/plastic-bottles.jpg",
+        reportId: report1.id,
+        uploadedBy: user1.id,
+      },
+      {
+        url: "https://example.com/images/organic-waste.jpg",
+        reportId: report2.id,
+        uploadedBy: user2.id,
+      },
+      {
+        url: "https://example.com/images/metal-cans.jpg",
+        reportId: report3.id,
+        uploadedBy: user3.id,
+      },
+      {
+        url: "https://example.com/images/recycling-center.jpg",
+        uploadedBy: user1.id, // extra user upload not tied to a report
+      },
+      {
+        url: "https://example.com/images/community-cleanup.jpg",
+        uploadedBy: user2.id, // extra user upload not tied to a report
+      },
+    ],
+  });
+  console.log(`Created ${images.count} image records`);
 
   console.log("Seed completed successfully!");
 }
