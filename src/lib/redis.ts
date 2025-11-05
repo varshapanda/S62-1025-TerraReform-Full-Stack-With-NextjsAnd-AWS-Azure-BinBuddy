@@ -9,7 +9,7 @@ interface RedisConfig {
 
 export function defineRedisConfig(): RedisConfig {
   const url = process.env.REDIS_URL;
-  if (!url) throw new Error("❌ Missing REDIS_URL");
+  if (!url) throw new Error(" Missing REDIS_URL");
   return { url };
 }
 

@@ -424,3 +424,56 @@ Integrating Prisma ORM into the project provided several key benefits:
 
 **Outcome:**  
 The Prisma ORM setup and client initialization were successfully completed. The database connection has been verified with live queries, and the setup is now stable for use across the project’s backend modules.
+
+
+##  Prisma Database Migration & Seeding Documentation
+
+This section outlines the complete workflow for handling **database schema changes**, **rollback procedures**, and **seeding** in the BinBuddy project.  
+All commands are run from the project root unless otherwise specified.
+
+---
+
+###  Migration Workflow
+
+We use **Prisma Migrate** to manage schema changes in PostgreSQL via Prisma ORM.
+
+####  Create a new migration
+When schema changes are made in `prisma/schema.prisma`, generate a new migration:
+```bash
+npx prisma migrate dev --name add_new_feature
+```
+
+This will:
+- Save migration files in the `/prisma/migrations` directory  
+- Apply them automatically to the development database  
+- Update the Prisma Client to match the latest schema changes
+
+To reset and reapply all migrations (for local dev only):
+```bash
+npx prisma migrate reset
+```
+### Rollback (Safe Method)
+Never delete migration folders manually.
+If a migration causes an issue, create a new corrective migration:
+1. Revert the schema changes in `prisma/schema.prisma`.
+2. Generate a new migration:
+```bash
+npx prisma migrate dev --name revert_faulty_change
+``` 
+For local testing only:
+```bash
+npx prisma migrate reset
+```
+Warning: This deletes all local data.
+
+### Seeding the Database
+To insert initial data into your database:
+  ```bash 
+  npx prisma db seed
+```
+### Screenshots showing succesful migration and seed scripts 
+ ![Migration successful](./public/successful-migration.png)
+
+
+ ![Seeding successful](./public/seed-script.png)
+
