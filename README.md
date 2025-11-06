@@ -669,4 +669,23 @@ Building secure authentication APIs involves:
 > "A good authentication system is invisible when it works — but disastrous when it fails. Secure it early, test it often, and document it clearly."
 
 
+##  Middleware Authentication & Role Access
+
+###  Overview
+This middleware checks if users are logged in and have the correct role before accessing API routes.
+
+---
+
+###  How It Works
+- `/api/auth/login` and `/api/auth/signup` are open to everyone.  
+- All other `/api/*` routes need a valid JWT token.  
+- If the token is missing or invalid → returns **401 Unauthorized**.  
+- Only **admins** can access `/api/admin/*` routes.  
+- If a normal user tries → returns **403 Access Denied**.
+
+---
+
+###  Reflection
+Follows least privilege — users only access what they need.  
+New roles like `moderator` can be added easily later.
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
+export const runtime = "nodejs";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -55,6 +56,8 @@ export async function POST(req: Request) {
       JWT_SECRET!,
       { expiresIn: "24h" }
     );
+console.log("🔑 Token payload:", { id: user.id, email: user.email, role: user.role });
+console.log("🔐 JWT token:", token);
 
     // Create response
     const response = NextResponse.json({

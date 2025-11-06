@@ -1,3 +1,7 @@
+enum Role {
+  user
+  admin
+}
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -15,7 +19,7 @@ model User {
   password      String?
   googleId      String?        @unique
   points        Int            @default(0)
-  role          String         @default("user")
+  role          Role           @default(user)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   
