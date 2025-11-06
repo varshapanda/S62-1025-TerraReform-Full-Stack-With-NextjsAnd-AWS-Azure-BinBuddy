@@ -477,3 +477,196 @@ To insert initial data into your database:
 
  ![Seeding successful](./public/seed-script.png)
 
+
+## Authentication APIs (Signup / Login) Documentation
+
+### Overview
+This explains the Signup and Login authentication flow built using **Next.js**, **Prisma**, **bcrypt**, and **JWT**. It covers secure password hashing, token generation, and route protection using token validation.
+
+---
+
+### Authentication Flow
+
+#### **1. Signup Flow**
+1. User sends `name`, `email`, and `password` to `/api/auth/signup`.
+2. Backend checks if the user already exists.
+3. Password is securely hashed using `bcrypt` before saving.
+4. A new user record is created in the database.
+5. A JWT token is generated and stored as an **HTTP-only cookie**.
+6. Response is returned with success message and user details (excluding password).
+
+#### **2. Login Flow**
+1. User sends `email` and `password` to `/api/auth/login`.
+2. Backend verifies user existence.
+3. Password is validated using `bcrypt.compare()`.
+4. A new JWT token is generated and sent as an **HTTP-only cookie**.
+5. Response confirms successful login.
+
+#### **3. Protected Route Access**
+1. Frontend requests `/api/users` with JWT (either in cookie or Authorization header).
+2. Server verifies token using a helper function.
+3. If valid, protected data is returned; otherwise, a 401/403 error is sent.
+
+---
+
+## Sample API Requests & Responses
+
+### **Signup API** (`POST /api/auth/signup`)
+#### Request Body:
+```json
+{
+  "name": "Alice Johnson",
+  "email": "alice@binbuddy.com",
+  "password": "SecurePass123!"
+}
+```
+
+#### Successful Response:
+```json
+{
+    "success": true,
+    "message": "Signup successful. You are now logged in.",
+    "user": {
+        "id": 5,
+        "name": "Alice Johnson",
+        "email": "alice@binbuddy.com",
+        "googleId": null,
+        "points": 0,
+        "role": "user",
+        "createdAt": "2025-11-06T08:16:29.051Z",
+        "updatedAt": "2025-11-06T08:16:29.051Z"
+    }
+}
+```
+
+#### Failed Response (Existing User):
+```json
+{
+  "success": false,
+  "message": "User already exists"
+}
+```
+
+---
+
+### **Login API** (`POST /api/auth/login`)
+#### Request Body:
+```json
+{
+  "email": "alice@binbuddy.com",
+  "password": "SecurePass123!"
+}
+```
+
+#### Successful Response:
+```json
+{
+    "success": true,
+    "message": "Login successful",
+    "user": {
+        "id": 5,
+        "name": "Alice Johnson",
+        "email": "alice@binbuddy.com",
+        "role": "user",
+        "points": 0
+    }
+}
+```
+
+#### Failed Response (Invalid Credentials):
+```json
+{
+  "success": false,
+  "message": "Invalid credentials"
+}
+```
+
+---
+
+### **Protected Route** (`GET /api/users`)
+#### Request Header:
+```
+Authorization: Bearer <JWT_TOKEN>
+```
+
+#### Successful Response:
+```json
+{
+    "success": true,
+    "message": "Protected data accessed successfully",
+    "user": {
+        "id": 5,
+        "email": "alice@binbuddy.com",
+        "role": "user"
+    }
+}
+```
+
+#### Failed Response (Token Missing or Expired):
+```json
+{
+  "success": false,
+  "message": "Invalid or expired token"
+}
+```
+
+---
+
+### Security Mechanisms
+
+#### **Password Hashing (bcrypt)**
+- User passwords are hashed before storage using `bcrypt.hash(password, 10)`.
+- This ensures that even if the database is compromised, passwords remain unreadable.
+
+#### **JWT Token Generation**
+- Tokens are generated using `jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: '24h' })`.
+- JWT contains essential user data and is signed with a secret key to prevent tampering.
+
+---
+
+### Token Expiry & Storage
+
+| Concept | Description |
+|----------|--------------|
+| **Expiry** | Tokens expire after **24 hours** to limit session duration. |
+| **Storage** | Tokens are stored as **HTTP-only cookies** for security against XSS attacks. |
+| **CSRF Protection** | Cookies use `SameSite=strict` and `secure=true` in production. |
+| **Refresh Strategy** | When tokens expire, users are re-authenticated. Future improvement: add refresh tokens for longer sessions. |
+
+---
+
+### Postman Testing Screenshots
+
+### Successful Requests
+- **Signup Success Screenshot**  
+![Signup Success](./public/signup_success.png)
+
+- **Login Success Screenshot**  
+![Login Success](./public/login_success.png)
+
+- **Protected Route Access Screenshot**  
+![Protected Route Success](./public/protected_route_access.png)
+
+### Failed Requests
+- **Signup Error (User Exists)**  
+![Signup Error](./public/signup_error.png)
+
+- **Login Error (Invalid Credentials)**  
+![Login Error](./public/login_error.png)
+
+- **Token Missing or Expired Error**  
+![Token Error](./public/token_missing.png)
+
+---
+
+### Reflection
+Building secure authentication APIs involves:
+- Hashing passwords before storage.
+- Using JWTs for stateless session management.
+- Protecting endpoints with middleware-based token verification.
+- Storing tokens safely using HTTP-only cookies.
+
+> "A good authentication system is invisible when it works — but disastrous when it fails. Secure it early, test it often, and document it clearly."
+
+
+
