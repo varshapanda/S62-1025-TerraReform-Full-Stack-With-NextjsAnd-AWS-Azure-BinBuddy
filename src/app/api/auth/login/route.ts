@@ -56,8 +56,7 @@ export async function POST(req: Request) {
       JWT_SECRET!,
       { expiresIn: "24h" }
     );
-console.log("🔑 Token payload:", { id: user.id, email: user.email, role: user.role });
-console.log("🔐 JWT token:", token);
+console.log("Token payload:", { id: user.id, email: user.email, role: user.role });
 
     // Create response
     const response = NextResponse.json({

@@ -689,3 +689,87 @@ This middleware checks if users are logged in and have the correct role before a
 Follows least privilege — users only access what they need.  
 New roles like `moderator` can be added easily later.
 
+
+
+## Email Service Integration
+
+This section documents the integration of a transactional email service into the BinBuddy project. 
+The integration enables automated email notifications for key user actions such as signup confirmations, 
+password resets, and activity alerts using either AWS Simple Email Service (SES) or SendGrid.
+
+---
+
+### Chosen Provider and Setup Process
+
+For this implementation, the **SendGrid** service was chosen due to its simplicity and development-friendly setup. 
+SendGrid offers a free tier suitable for testing and provides straightforward API integration.
+
+### Steps followed for setup:
+- Created a SendGrid account at [SendGrid](https://sendgrid.com)
+- Verified the sender email under **Settings → Sender Authentication**
+- Generated an API key with "Full Access" permissions
+- Added the following environment variables to the `.env` file:
+
+```
+SENDGRID_API_KEY=your-api-key
+SENDGRID_SENDER=no-reply@yourdomain.com
+```
+
+---
+
+### Email Template Structure and Personalization
+
+A reusable HTML email template was created for sending welcome messages and notifications. 
+The template dynamically personalizes the content using the user's name.
+
+Example template:
+
+```typescript
+export const welcomeTemplate = (userName: string) => `
+  <h2>Welcome to BinBuddy, ${userName}!</h2>
+  <p>Thank you for joining our sustainable community.</p>
+  <p>Start contributing at <a href="https://binbuddy.app">BinBuddy Dashboard</a>.</p>
+  <hr/>
+  <small>This is an automated email. Please do not reply.</small>
+`;
+```
+
+---
+
+### Sandbox vs Production Configuration
+
+SendGrid allows email sending in both sandbox and production environments. 
+During development, sandbox mode is used to simulate sending without delivering emails. 
+In production, verified sender emails are required to ensure deliverability.
+
+---
+
+### Proof of Successful Email
+
+A test email was sent successfully via the `/api/email` route using SendGrid. 
+The console logs confirmed message delivery with header details as proof.
+
+Example console output:
+
+```
+Email sent successfully!
+Welcome email sent to: user@email.com
+
+
+```
+
+![Email Sent Confirmation](./public/email_service.png)
+
+---
+
+### Discussion
+
+#### Key considerations and reflections from this integration:
+
+- **Rate Limits and Retry Logic:** SendGrid’s free tier allows up to 100 emails per day. 
+  To handle higher volumes, a queueing mechanism or exponential backoff strategy can be implemented.
+- **Bounce Handling:** Bounce and delivery events can be monitored using SendGrid’s Event Webhook dashboard.
+- **Spam Compliance:** All outgoing emails follow CAN-SPAM standards and use verified sender addresses.
+- **Secure Sender Authentication (SPF/DKIM):** DNS records for SPF and DKIM were configured to ensure email authenticity 
+  and prevent spoofing issues.
+
