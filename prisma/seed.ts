@@ -1,7 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
+const REFRESH_TOKEN_SECRET =
+  process.env.JWT_SECRET + "_refresh" || "your-refresh-secret";
 
 async function main() {
   console.log("Starting seed...");
@@ -44,6 +48,66 @@ async function main() {
     },
   });
   console.log("Created user:", user3.email);
+
+  // Create Refresh Tokens for users (simulating active sessions)
+  const refreshToken1 = jwt.sign(
+    { id: user1.id, type: "refresh" },
+    REFRESH_TOKEN_SECRET,
+    { expiresIn: "7d" }
+  );
+  const hashedRefreshToken1 = crypto
+    .createHash("sha256")
+    .update(refreshToken1)
+    .digest("hex");
+
+  await prisma.refreshToken.create({
+    data: {
+      userId: user1.id,
+      token: hashedRefreshToken1,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+    },
+  });
+  console.log("Created refresh token for user1");
+
+  const refreshToken2 = jwt.sign(
+    { id: user2.id, type: "refresh" },
+    REFRESH_TOKEN_SECRET,
+    { expiresIn: "7d" }
+  );
+  const hashedRefreshToken2 = crypto
+    .createHash("sha256")
+    .update(refreshToken2)
+    .digest("hex");
+
+  await prisma.refreshToken.create({
+    data: {
+      userId: user2.id,
+      token: hashedRefreshToken2,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+  });
+  console.log("Created refresh token for user2");
+
+  // Create a revoked refresh token for user3 (simulating logged out session)
+  const refreshToken3 = jwt.sign(
+    { id: user3.id, type: "refresh" },
+    REFRESH_TOKEN_SECRET,
+    { expiresIn: "7d" }
+  );
+  const hashedRefreshToken3 = crypto
+    .createHash("sha256")
+    .update(refreshToken3)
+    .digest("hex");
+
+  await prisma.refreshToken.create({
+    data: {
+      userId: user3.id,
+      token: hashedRefreshToken3,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      revokedAt: new Date(), // This token is revoked
+    },
+  });
+  console.log("Created revoked refresh token for user3");
 
   // Create Report 1
   const report1 = await prisma.report.create({
@@ -181,6 +245,7 @@ async function main() {
     },
   });
   console.log("Created notification for user3");
+
   // Create Images for reports
   const images = await prisma.image.createMany({
     data: [
