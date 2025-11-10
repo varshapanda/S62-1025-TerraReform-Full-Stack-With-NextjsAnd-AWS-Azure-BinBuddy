@@ -7,15 +7,19 @@ interface DecodedToken {
   id: number;
   email: string;
   role: string;
+  type: "access" | "refresh"; // Token type identification
+  iat?: number;
+  exp?: number; // Expiration for detailed error handling
 }
 
 export function verifyToken(req: NextRequest): {
   success: boolean;
   user?: DecodedToken;
   error?: string;
+  errorType?: "expired" | "invalid" | "missing"; //Error type differentiation
 } {
-  // Try to get token from cookie first, then fall back to Authorization header
-  let token = req.cookies.get("token")?.value;
+  // Try accessToken first (was "token")
+  let token = req.cookies.get("accessToken")?.value;
 
   if (!token) {
     const authHeader = req.headers.get("authorization");
@@ -23,7 +27,11 @@ export function verifyToken(req: NextRequest): {
   }
 
   if (!token) {
-    return { success: false, error: "Token missing" };
+    return {
+      success: false,
+      error: "Token missing",
+      errorType: "missing",
+    };
   }
 
   try {
@@ -32,9 +40,42 @@ export function verifyToken(req: NextRequest): {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
+
+    //Verify this is an access token, not refresh token
+    if (decoded.type !== "access") {
+      return {
+        success: false,
+        error: "Invalid token type. Use access token for API requests.",
+        errorType: "invalid",
+      };
+    }
+
     return { success: true, user: decoded };
   } catch (error) {
-    console.error("Token verification error:", error);
-    return { success: false, error: "Invalid or expired token" };
+    // Differentiate between expired and invalid tokens
+    if (error instanceof jwt.TokenExpiredError) {
+      console.error("Access token expired:", error.message);
+      return {
+        success: false,
+        error: "Access token expired. Please refresh your token.",
+        errorType: "expired",
+      };
+    }
+
+    if (error instanceof jwt.JsonWebTokenError) {
+      console.error("Token verification error:", error.message);
+      return {
+        success: false,
+        error: "Invalid token",
+        errorType: "invalid",
+      };
+    }
+
+    console.error("Unexpected token verification error:", error);
+    return {
+      success: false,
+      error: "Token verification failed",
+      errorType: "invalid",
+    };
   }
 }

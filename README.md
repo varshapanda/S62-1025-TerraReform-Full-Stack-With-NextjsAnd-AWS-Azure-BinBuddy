@@ -773,3 +773,124 @@ Welcome email sent to: user@email.com
 - **Secure Sender Authentication (SPF/DKIM):** DNS records for SPF and DKIM were configured to ensure email authenticity 
   and prevent spoofing issues.
 
+
+
+## Secure JWT & Session Management
+
+This document describes the **Secure JWT & Session Management** unit implemented in the BinBuddy project.  
+It explains how access and refresh tokens are used for authentication, how tokens are stored and rotated securely, and how common web security risks (XSS, CSRF) are mitigated.
+
+---
+
+### 1. JWT Structure
+A JSON Web Token (JWT) consists of three parts: `header.payload.signature`.
+
+Example decoded structure:
+```json
+{
+  "header": { "alg": "HS256", "typ": "JWT" },
+  "payload": { "userId": "12345", "role": "user", "type": "access", "exp": 1715120000 },
+  "signature": "hashed-verification-string"
+}
+```
+
+- **Header:** Defines the algorithm (`HS256`) and token type (`JWT`).
+- **Payload:** Contains user claims (ID, role, expiry). Do **not** store sensitive data here.
+- **Signature:** Verifies the token's integrity.
+
+**Security Note:** JWTs are **encoded, not encrypted** — never include passwords or secrets inside the payload.
+
+---
+
+### 2. Access vs Refresh Tokens
+
+| Type | Purpose | Expiry | Stored In | Rotation |
+|------|----------|--------|------------|-----------|
+| **Access Token** | Authorize API requests | 15 minutes | HTTP-only cookie (`accessToken`) | Reissued when refreshed |
+| **Refresh Token** | Get new access token after expiry | 7 days | HTTP-only cookie (`refreshToken`) + hashed in DB | Rotated on every refresh |
+
+**Flow Summary:**
+1. User logs in → Server issues `accessToken` (15m) + `refreshToken` (7d).
+2. Access token used for API requests.
+3. If expired → client calls `/api/auth/refresh`.
+4. Server validates refresh token, issues new tokens, and revokes the old one.
+5. Logout revokes current refresh token and clears cookies.
+
+---
+
+### 3. Storage Location & Security Choices
+
+- **Access Token** → HTTP-only, `SameSite=Strict` cookie (prevents JS access & CSRF).
+- **Refresh Token** → HTTP-only cookie + stored hashed (`sha256`) in database for validation and rotation.
+- **Avoid** `localStorage` or `sessionStorage` for tokens — they are readable by JavaScript and vulnerable to XSS.
+
+Example:
+```js
+res.cookies.set("refreshToken", token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: "Strict",
+});
+```
+
+---
+
+### 4. Token Expiry & Rotation Flow
+
+1. Access token expires after 15 minutes.
+2. Client sends a request → API returns `401` with `"errorType": "expired"`.
+3. Client sends `/api/auth/refresh` request using the `refreshToken` cookie.
+4. Server verifies, rotates tokens, and sets new cookies.
+5. Old refresh token in DB is marked as `revokedAt`.
+
+Example client logic:
+```js
+async function fetchWithAuth(url) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (res.status === 401) {
+    await refreshAccessToken();
+    return fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  }
+  return res;
+}
+```
+
+---
+
+### 5. Security Risks & Mitigations
+
+| Threat | Description | Mitigation |
+|---------|--------------|-------------|
+| **XSS** | Malicious scripts stealing tokens | Use HTTP-only cookies; sanitize user input |
+| **CSRF** | Cross-site requests performing actions | Use `SameSite=Strict`, CSRF tokens, and origin checks |
+| **Token Replay Attack** | Reuse of stolen token | Use short expiry + refresh token rotation |
+
+---
+
+## 7. Example Evidence
+
+- Screenshot of successful login response with access & refresh cookies.
+![Login Response](./public/login.png)
+
+
+- Screenshot output showing expired access token → `401 Unauthorized`.
+![Expired Token Response](./public/access_token_expired.png)
+
+
+- Screenshot output showing `/api/auth/refresh` issuing new tokens.
+![Refresh Token Response](./public/refresh_token.png)
+
+
+- Screenshot of logout endpoint clearing cookies and revoking refresh token in DB.
+![Logout Response](./public/logout.png)
+
+
+---
+
+## 8. Environment Variables (for this unit)
+```
+JWT_SECRET=your_super_secret_key
+REFRESH_TOKEN_SECRET=your_refresh_token_secret
+```
+
+---

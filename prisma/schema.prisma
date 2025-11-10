@@ -2,6 +2,7 @@ enum Role {
   user
   admin
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -11,7 +12,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Entity 1: User
 model User {
   id            Int            @id @default(autoincrement())
   name          String
@@ -23,19 +23,32 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   
-  // Relationships
   reports       Report[]
   claimedTasks  Task[]
   notifications Notification[]
   rewards       Reward[]
-   images        Image[] 
-  
-  // Indexes for faster queries
+  images        Image[]
+  refreshTokens RefreshToken[] // NEW: Relationship to refresh tokens
+
   @@index([email])
   @@index([points])
 }
 
-// Entity 2: Report (Waste Reports)
+// NEW: RefreshToken model
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Report {
   id            Int      @id @default(autoincrement())
   imageUrl      String
@@ -48,20 +61,17 @@ model Report {
   status        String   @default("pending")
   userId        Int
   
-  // Foreign Key Relationship
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   task          Task?
-   images        Image[] 
+  images        Image[] 
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
-  // Indexes for faster queries
   @@index([userId])
   @@index([status])
 }
 
-// Entity 3: Task (Collection Tasks)
 model Task {
   id          Int       @id @default(autoincrement())
   reportId    Int       @unique
@@ -70,20 +80,16 @@ model Task {
   claimedAt   DateTime?
   completedAt DateTime?
   
-  // Foreign Key Relationships
   report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
   collector   User?     @relation(fields: [claimedBy], references: [id])
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
-  
-  // Indexes for faster queries
   @@index([status])
   @@index([claimedBy])
 }
 
-// Entity 4: Reward (Points History)
 model Reward {
   id          Int      @id @default(autoincrement())
   userId      Int
@@ -91,16 +97,13 @@ model Reward {
   action      String
   description String
   
-  // Foreign Key Relationship
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime @default(now())
   
-  // Index for faster queries
   @@index([userId])
 }
 
-// Entity 5: Notification (User Notifications)
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    Int
@@ -109,23 +112,20 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   
-  // Foreign Key Relationship
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
   
-  // Indexes for faster queries
   @@index([userId])
   @@index([read])
 }
-// Entity 6: Image (Uploaded Images)
+
 model Image {
   id        Int      @id @default(autoincrement())
   url       String
   reportId  Int?
   uploadedBy Int?
   
-  // Relationships
   report    Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
 
