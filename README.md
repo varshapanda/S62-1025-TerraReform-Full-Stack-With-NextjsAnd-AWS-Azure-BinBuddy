@@ -894,3 +894,9 @@ REFRESH_TOKEN_SECRET=your_refresh_token_secret
 ```
 
 ---
+### Centralized Error Handling and Logging
+
+This part of the project implements a centralized error-handling system using a reusable handleError() function to ensure consistent and structured logging across environments.
+In development, detailed logs and stack traces aid debugging, while in production, user-safe responses hide sensitive details to maintain security and trust.
+The approach improves debugging efficiency, traceability, and user confidence through standardized error reporting and controlled visibility.
+Screenshots and logs from both environments demonstrate its real-world reliability and impact.

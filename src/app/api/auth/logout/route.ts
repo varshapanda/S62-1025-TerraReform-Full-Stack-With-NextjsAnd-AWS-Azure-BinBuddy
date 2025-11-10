@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
-import crypto from "crypto"; // for hashing token
-import { prisma } from "@/lib/prisma"; // for database access
+import crypto from "crypto";
+import { prisma } from "@/lib/prisma";
+import { handleError } from "@/lib/errorHandler";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,12 +36,12 @@ export async function POST(req: NextRequest) {
       message: "Logout successful",
     });
 
-    // CHANGE: Clear accessToken cookie (was "token")
+    // Clear accessToken cookie
     response.cookies.set("accessToken", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 0, // Expire immediately
+      maxAge: 0,
       path: "/",
     });
 
@@ -49,16 +50,12 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 0, // Expire immediately
+      maxAge: 0,
       path: "/",
     });
 
     return response;
   } catch (error) {
-    console.error("Logout error:", error);
-    return NextResponse.json(
-      { success: false, message: "Logout failed" },
-      { status: 500 }
-    );
+    return handleError(error, "POST /api/auth/logout");
   }
 }

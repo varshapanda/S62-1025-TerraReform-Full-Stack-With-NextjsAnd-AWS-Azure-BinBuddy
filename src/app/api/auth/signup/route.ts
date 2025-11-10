@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import crypto from "crypto"; //for hashing refresh token
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { welcomeTemplate } from "@/lib/email-template";
 import { sendEmail } from "@/lib/email-sender";
+import { handleError } from "@/lib/errorHandler";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET =
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // SEND WELCOME EMAIL
+    // Send welcome email (non-critical)
     try {
       const emailResult = await sendEmail(
         email,
@@ -67,35 +68,34 @@ export async function POST(req: Request) {
       console.error("Email error (non-critical):", emailError);
     }
 
-    // CHANGE: Generate access token with 15m expiry (was 24h)
+    // Generate access token (15 minutes)
     const accessToken = jwt.sign(
       {
         id: newUser.id,
         email: newUser.email,
         role: newUser.role,
         type: "access",
-      }, // NEW: type: "access"
+      },
       JWT_SECRET!,
-      { expiresIn: "15m" } // CHANGE: 15m instead of 24h
+      { expiresIn: "15m" }
     );
 
-    // NEW: Generate refresh token (7 days)
+    // Generate refresh token (7 days)
     const refreshTokenValue = jwt.sign(
       { id: newUser.id, type: "refresh" },
       REFRESH_TOKEN_SECRET,
       { expiresIn: "7d" }
     );
 
-    // NEW: Hash and store refresh token in database
+    // Hash and store refresh token in database
     const hashedRefreshToken = crypto
       .createHash("sha256")
       .update(refreshTokenValue)
       .digest("hex");
 
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // NEW: Store refresh token in database
     await prisma.refreshToken.create({
       data: {
         userId: newUser.id,
@@ -120,7 +120,6 @@ export async function POST(req: Request) {
       {
         success: true,
         message: "Signup successful! Check your email for a welcome message.",
-        // Added token expiry info
         tokens: {
           accessTokenExpiresIn: "15m",
           refreshTokenExpiresIn: "7d",
@@ -130,30 +129,26 @@ export async function POST(req: Request) {
       { status: 201 }
     );
 
-    // CHANGE: Set access token with 15m expiry (cookie name changed from "token")
+    // Set access token cookie
     response.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 15 * 60, // CHANGE: 15 minutes (was 7 days)
+      maxAge: 15 * 60,
       path: "/",
     });
 
-    // Set refresh token as separate cookie
+    // Set refresh token cookie
     response.cookies.set("refreshToken", refreshTokenValue, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
     return response;
   } catch (error) {
-    console.error("Signup error:", error);
-    return NextResponse.json(
-      { success: false, message: "Signup failed" },
-      { status: 500 }
-    );
+    return handleError(error, "POST /api/auth/signup");
   }
 }

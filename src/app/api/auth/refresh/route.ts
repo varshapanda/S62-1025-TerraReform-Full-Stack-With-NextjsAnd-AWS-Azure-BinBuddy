@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { handleError } from "@/lib/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 15 * 60, // 15 minutes
+      maxAge: 15 * 60,
       path: "/",
     });
 
@@ -150,16 +151,12 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
     return response;
   } catch (error) {
-    console.error("Token refresh error:", error);
-    return NextResponse.json(
-      { success: false, message: "Token refresh failed" },
-      { status: 500 }
-    );
+    return handleError(error, "POST /api/auth/refresh");
   }
 }

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import crypto from "crypto"; // for hashing refresh token
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { handleError } from "@/lib/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ if (!JWT_SECRET) {
   );
 }
 
-const REFRESH_TOKEN_SECRET = process.env.JWT_SECRET + "_refresh"; // Separate secret for refresh tokens
+const REFRESH_TOKEN_SECRET = process.env.JWT_SECRET + "_refresh";
 
 export async function POST(req: Request) {
   try {
@@ -54,30 +55,29 @@ export async function POST(req: Request) {
       );
     }
 
-    // CHANGE: Access token now 15 minutes instead of 24h
+    // Access token (15 minutes)
     const accessToken = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, type: "access" }, // type: "access"
+      { id: user.id, email: user.email, role: user.role, type: "access" },
       JWT_SECRET!,
-      { expiresIn: "15m" } // 15m instead of 24h
+      { expiresIn: "15m" }
     );
 
-    // NEW: Generate refresh token (7 days)
+    // Generate refresh token (7 days)
     const refreshTokenValue = jwt.sign(
       { id: user.id, type: "refresh" },
       REFRESH_TOKEN_SECRET,
       { expiresIn: "7d" }
     );
 
-    // NEW: Hash and store refresh token in database for rotation/revocation
+    // Hash and store refresh token in database
     const hashedRefreshToken = crypto
       .createHash("sha256")
       .update(refreshTokenValue)
       .digest("hex");
 
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // NEW: Store refresh token in database
     await prisma.refreshToken.create({
       data: {
         userId: user.id,
@@ -92,13 +92,12 @@ export async function POST(req: Request) {
       role: user.role,
       expiresIn: "15m",
     });
-    console.log("Refresh Token created for user:", user.id); // NEW
+    console.log("Refresh Token created for user:", user.id);
 
     // Create response
     const response = NextResponse.json({
       success: true,
       message: "Login successful",
-      // NEW: Added token expiry info
       tokens: {
         accessTokenExpiresIn: "15m",
         refreshTokenExpiresIn: "7d",
@@ -112,30 +111,26 @@ export async function POST(req: Request) {
       },
     });
 
-    // CHANGE: Set access token with shorter expiry (cookie name changed from "token" to "accessToken")
+    // Set access token cookie
     response.cookies.set("accessToken", accessToken, {
-      httpOnly: true, // Prevents JavaScript access (XSS protection)
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "strict", // CSRF protection
-      maxAge: 15 * 60, // CHANGE: 15 minutes (was 60 * 60 * 24 * 7)
-      path: "/", // Cookie available for all routes
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60,
+      path: "/",
     });
 
-    // NEW: Set refresh token as separate cookie (longer expiry)
+    // Set refresh token cookie
     response.cookies.set("refreshToken", refreshTokenValue, {
-      httpOnly: true, // Prevents JavaScript access (XSS protection)
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "strict", // CSRF protection
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/", // Cookie available for all routes
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
     });
 
     return response;
   } catch (error) {
-    console.error("Login error:", error);
-    return NextResponse.json(
-      { success: false, message: "Login failed" },
-      { status: 500 }
-    );
+    return handleError(error, "POST /api/auth/login");
   }
 }
