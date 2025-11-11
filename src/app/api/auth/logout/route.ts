@@ -1,7 +1,9 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { handleError } from "@/lib/errorHandler";
+import { sendSuccess } from "@/lib/responseHandler";
+// import { ERROR_CODES } from "@/lib/errorCodes";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,11 +32,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create response
-    const response = NextResponse.json({
-      success: true,
-      message: "Logout successful",
-    });
+    // Build unified success response using sendSuccess
+    const data = { revoked: !!refreshToken };
+    const response = sendSuccess<typeof data>(data, "Logout successful", 200);
 
     // Clear accessToken cookie
     response.cookies.set("accessToken", "", {

@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { welcomeTemplate } from "@/lib/email-template";
 import { sendEmail } from "@/lib/email-sender";
 import { handleError } from "@/lib/errorHandler";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET =
@@ -24,18 +26,20 @@ export async function POST(req: Request) {
 
     // Validate input
     if (!name || !email || !password) {
-      return NextResponse.json(
-        { success: false, message: "All fields are required" },
-        { status: 400 }
+      return sendError(
+        "All fields are required",
+        ERROR_CODES.VALIDATION_ERROR,
+        400
       );
     }
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return NextResponse.json(
-        { success: false, message: "User already exists" },
-        { status: 400 }
+      return sendError(
+        "User already exists",
+        ERROR_CODES.VALIDATION_ERROR,
+        400
       );
     }
 

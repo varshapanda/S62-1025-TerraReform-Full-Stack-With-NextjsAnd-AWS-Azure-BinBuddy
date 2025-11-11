@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+// import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { handleError } from "@/lib/errorHandler";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export const runtime = "nodejs";
 
@@ -23,36 +25,28 @@ export async function POST(req: Request) {
 
     // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        { success: false, message: "Email and password are required" },
-        { status: 400 }
+      return sendError(
+        "Email and password are required",
+        ERROR_CODES.VALIDATION_ERROR,
+        400
       );
     }
 
     // Find user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return NextResponse.json(
-        { success: false, message: "User not found" },
-        { status: 404 }
-      );
+      return sendError("User not found", ERROR_CODES.NOT_FOUND, 404);
     }
 
     // Check if password exists (for non-Google users)
     if (!user.password) {
-      return NextResponse.json(
-        { success: false, message: "Please login with Google" },
-        { status: 400 }
-      );
+      return sendError("Please login with Google", ERROR_CODES.AUTH_ERROR, 400);
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return NextResponse.json(
-        { success: false, message: "Invalid credentials" },
-        { status: 401 }
-      );
+      return sendError("Invalid credentials", ERROR_CODES.AUTH_ERROR, 401);
     }
 
     // Access token (15 minutes)
@@ -95,9 +89,7 @@ export async function POST(req: Request) {
     console.log("Refresh Token created for user:", user.id);
 
     // Create response
-    const response = NextResponse.json({
-      success: true,
-      message: "Login successful",
+    const data = {
       tokens: {
         accessTokenExpiresIn: "15m",
         refreshTokenExpiresIn: "7d",
@@ -109,7 +101,9 @@ export async function POST(req: Request) {
         role: user.role,
         points: user.points,
       },
-    });
+    };
+
+    const response = sendSuccess<typeof data>(data, "Login successful", 200);
 
     // Set access token cookie
     response.cookies.set("accessToken", accessToken, {
