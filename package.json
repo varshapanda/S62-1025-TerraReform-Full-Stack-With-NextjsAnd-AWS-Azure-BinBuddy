@@ -39,7 +39,7 @@
     "lint-staged": "^16.2.6",
     "prettier": "^3.6.2",
     "prisma": "^6.18.0",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.0.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
