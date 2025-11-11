@@ -1,0 +1,10 @@
+// lib/errorCodes.ts
+export const ERROR_CODES = {
+  VALIDATION_ERROR: "E001",
+  NOT_FOUND: "E002",
+  DATABASE_FAILURE: "E003",
+  AUTH_ERROR: "E004",
+  INTERNAL_ERROR: "E500",
+  EXTERNAL_SERVICE_FAILURE: "E005",
+  RATE_LIMITED: "E429",
+} as const;

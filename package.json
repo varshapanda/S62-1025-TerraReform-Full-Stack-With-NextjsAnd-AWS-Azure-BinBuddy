@@ -10,8 +10,8 @@
     "prepare": "husky install"
   },
   "prisma": {
-  "seed": "ts-node prisma/seed.ts"
-},
+    "seed": "ts-node prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^6.18.0",
     "@sendgrid/mail": "^8.1.6",

@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { handleError } from "@/lib/errorHandler";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export const runtime = "nodejs";
 
@@ -19,10 +21,7 @@ export async function POST(req: NextRequest) {
     const refreshToken = req.cookies.get("refreshToken")?.value;
 
     if (!refreshToken) {
-      return NextResponse.json(
-        { success: false, message: "Refresh token missing" },
-        { status: 401 }
-      );
+      return sendError("Refresh token missing", ERROR_CODES.AUTH_ERROR, 401);
     }
 
     // Verify refresh token signature
@@ -34,18 +33,16 @@ export async function POST(req: NextRequest) {
       };
     } catch (error) {
       console.error("Refresh token verification failed:", error);
-      return NextResponse.json(
-        { success: false, message: "Invalid or expired refresh token" },
-        { status: 401 }
+      return sendError(
+        "Invalid or expired refresh token",
+        ERROR_CODES.AUTH_ERROR,
+        401
       );
     }
 
     // Ensure this is a refresh token (not access token)
     if (decoded.type !== "refresh") {
-      return NextResponse.json(
-        { success: false, message: "Invalid token type" },
-        { status: 401 }
-      );
+      return sendError("Invalid token type", ERROR_CODES.AUTH_ERROR, 401);
     }
 
     // Hash token to check in database
@@ -61,18 +58,16 @@ export async function POST(req: NextRequest) {
 
     if (!storedToken || storedToken.revokedAt) {
       console.error("Refresh token not found or revoked for user:", decoded.id);
-      return NextResponse.json(
-        { success: false, message: "Refresh token has been revoked" },
-        { status: 401 }
+      return sendError(
+        "Refresh token has been revoked",
+        ERROR_CODES.AUTH_ERROR,
+        401
       );
     }
 
     // Check if refresh token has expired
     if (storedToken.expiresAt < new Date()) {
-      return NextResponse.json(
-        { success: false, message: "Refresh token expired" },
-        { status: 401 }
-      );
+      return sendError("Refresh token expired", ERROR_CODES.AUTH_ERROR, 401);
     }
 
     // Fetch user data
@@ -81,10 +76,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, message: "User not found" },
-        { status: 404 }
-      );
+      return sendError("User not found", ERROR_CODES.NOT_FOUND, 404);
     }
 
     // Generate new access token (15 minutes)
@@ -128,14 +120,18 @@ export async function POST(req: NextRequest) {
     console.log("Old refresh token revoked (token rotation)");
 
     // Create response with new tokens
-    const response = NextResponse.json({
-      success: true,
-      message: "Tokens refreshed successfully",
+    const data = {
       tokens: {
         accessTokenExpiresIn: "15m",
         refreshTokenExpiresIn: "7d",
       },
-    });
+    };
+
+    const response = sendSuccess<typeof data>(
+      data,
+      "Tokens refreshed successfully",
+      200
+    );
 
     // Set new access token
     response.cookies.set("accessToken", newAccessToken, {
