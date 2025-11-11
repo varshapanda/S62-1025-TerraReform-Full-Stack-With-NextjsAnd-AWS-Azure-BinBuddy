@@ -1,15 +1,16 @@
 enum Role {
   user
   admin
+  volunteer
+  authority
+}
+generator client {
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model User {
@@ -19,32 +20,29 @@ model User {
   password      String?
   googleId      String?        @unique
   points        Int            @default(0)
-  role          Role           @default(user)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  
-  reports       Report[]
-  claimedTasks  Task[]
-  notifications Notification[]
-  rewards       Reward[]
+  role          Role           @default(user)
   images        Image[]
-  refreshTokens RefreshToken[] // NEW: Relationship to refresh tokens
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  reports       Report[]
+  rewards       Reward[]
+  claimedTasks  Task[]
 
   @@index([email])
   @@index([points])
 }
 
-// NEW: RefreshToken model
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   revokedAt DateTime?
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([expiresAt])
 }
@@ -60,14 +58,12 @@ model Report {
   verified      Boolean  @default(false)
   status        String   @default("pending")
   userId        Int
-  
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task          Task?
-  images        Image[] 
-  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+  images        Image[]
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task          Task?
+
   @@index([userId])
   @@index([status])
 }
@@ -79,13 +75,11 @@ model Task {
   claimedBy   Int?
   claimedAt   DateTime?
   completedAt DateTime?
-  
-  report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  collector   User?     @relation(fields: [claimedBy], references: [id])
-  
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+  collector   User?     @relation(fields: [claimedBy], references: [id])
+  report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
   @@index([status])
   @@index([claimedBy])
 }
@@ -96,11 +90,9 @@ model Reward {
   points      Int
   action      String
   description String
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   createdAt   DateTime @default(now())
-  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
@@ -111,27 +103,25 @@ model Notification {
   title     String
   message   String
   read      Boolean  @default(false)
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   createdAt DateTime @default(now())
-  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([read])
 }
 
 model Image {
-  id        Int      @id @default(autoincrement())
-  url       String
-  reportId  Int?
+  id         Int      @id @default(autoincrement())
+  url        String
+  reportId   Int?
   uploadedBy Int?
-  
-  report    Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  report     Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [uploadedBy], references: [id])
 
   @@index([reportId])
   @@index([uploadedBy])
 }
+
+

@@ -900,3 +900,58 @@ This part of the project implements a centralized error-handling system using a 
 In development, detailed logs and stack traces aid debugging, while in production, user-safe responses hide sensitive details to maintain security and trust.
 The approach improves debugging efficiency, traceability, and user confidence through standardized error reporting and controlled visibility.
 Screenshots and logs from both environments demonstrate its real-world reliability and impact.
+
+##  Role-Based Access Control (RBAC)
+
+###  Overview
+BinBuddy implements **Role-Based Access Control (RBAC)** to ensure that users only access actions and data relevant to their assigned roles.  
+This promotes security, accountability, and smooth collaboration between users, volunteers, authorities, and admins.
+
+RBAC logic is enforced both:
+-  **In API routes** — via middleware that checks JWT role claims before processing requests.
+-  **In the UI** — by conditionally rendering components based on permissions.
+
+---
+
+###  Roles & Permissions
+
+| Role        | Permissions                                                                                     |
+|--------------|------------------------------------------------------------------------------------------------|
+| **User**     | `report:create`, `report:read:own`, `report:update:own`, `reward:read:own`                     |
+| **Volunteer**| `report:read:pending`, `report:verify`, `report:assign:authority`, `reward:earn`               |
+| **Authority**| `task:schedule`, `task:complete`, `report:read:assigned`, `reward:distribute`                  |
+| **Admin**    | `user:manage`, `report:*`, `task:*`, `reward:*`, `logs:read`                                   |
+
+Admins automatically bypass permission checks and can perform all actions.
+
+---
+
+###  Policy Evaluation Logic
+
+The RBAC logic is implemented in `lib/rbac.ts`:
+
+```ts
+export function roleHasPermission(role: Role, permission: string) {
+  if (role === "admin") return true; // Admins bypass all checks
+
+  const rolePerms = permissions[role] ?? [];
+
+  // Direct match (e.g., report:create)
+  if (rolePerms.includes(permission)) return true;
+
+  // Wildcard support (e.g., report:* matches report:create)
+  const [scope] = permission.split(":");
+  return rolePerms.some((p) => p.endsWith(":*") && p.startsWith(`${scope}:`));
+}
+
+```
+#### This ensures consistent permission checks across all backend routes.
+-----
+###  Summary
+
+RBAC ensures that:
+
+-  **Users** can only report and track their own waste.  
+-  **Volunteers** verify segregation and forward reports.  
+-  **Authorities** handle scheduling and collection.  
+-  **Admins** manage the entire system and maintain oversight.

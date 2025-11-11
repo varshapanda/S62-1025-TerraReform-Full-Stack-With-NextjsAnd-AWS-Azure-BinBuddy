@@ -2,79 +2,83 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { ERROR_CODES } from "@/lib/errorCodes";
+import { sendError } from "@/lib/responseHandler";
 
 // Ensure middleware runs in Node.js (not Edge runtime)
 export const runtime = "nodejs";
 
 /**
- * Middleware to protect API routes and handle role-based access.
- * This runs before every API request and validates JWT tokens.
+ * Role-based access matrix defining which routes are accessible to which roles.
+ */
+const ROLE_PERMISSIONS: Record<string, RegExp[]> = {
+  user: [/^\/api\/reports/, /^\/api\/tasks\/view/], // users can report or view tasks
+  volunteer: [/^\/api\/reports\/.*\/verify/, /^\/api\/reports\/pending/],
+  authority: [/^\/api\/tasks/, /^\/api\/reports\/verified/],
+  admin: [/^\/api\/admin/, /^\/api\/reports/, /^\/api\/tasks/, /^\/api\/users/],
+};
+
+/**
+ * Global middleware for JWT validation + Role-Based Access Control
  */
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Step 1: Define public routes that don't need authentication
-  // CHANGE: Added /api/auth/logout and /api/auth/refresh to public routes
+  //  Step 1: Public routes (no authentication needed)
   const publicPaths = [
     "/api/auth/login",
     "/api/auth/signup",
-    "/api/auth/logout", // NEW: Allow logout without token check
-    "/api/auth/refresh", // NEW: Allow refresh without access token
+    "/api/auth/logout",
+    "/api/auth/refresh",
   ];
-  if (publicPaths.includes(pathname)) {
-    // Allow these requests without checking token
-    return NextResponse.next();
-  }
+  if (publicPaths.includes(pathname)) return NextResponse.next();
 
-  // Step 2: Apply token check only for /api routes
+  //  Step 2: Protect all /api routes
   if (pathname.startsWith("/api/")) {
-    // Verify the JWT token (from cookies or Authorization header)
-    const { success, user, error, errorType } = verifyToken(req); // CHANGE: Added errorType
+    const { success, user, error, errorType } = verifyToken(req);
 
-    // If token is missing or invalid, block access
+    // Token missing or invalid
     if (!success || !user) {
-      // CHANGE: Include errorType in response for client-side refresh logic
-      return NextResponse.json(
+      return sendError(
+        error || "Unauthorized access. Please log in.",
+        ERROR_CODES.AUTH_ERROR,
+        401,
         {
-          success: false,
-          message: error || "Unauthorized access. Please log in.",
-          errorType, // NEW: Send error type (expired, invalid, missing)
-          refreshUrl: errorType === "expired" ? "/api/auth/refresh" : undefined, // NEW: Hint for expired tokens
-        },
-        { status: 401 }
+          errorType,
+          refreshUrl: errorType === "expired" ? "/api/auth/refresh" : undefined,
+        }
       );
     }
 
-    // Step 3: Role-based access control
-    // Only users with role 'admin' can access /api/admin routes
-    if (
-      pathname.startsWith("/api/admin") &&
-      user.role.toLowerCase() !== "admin"
-    ) {
-      console.log("Access denied → non-admin tried to access admin route");
-      return NextResponse.json(
-        { success: false, message: "Access denied. Admins only." },
-        { status: 403 }
+    // ✅ Step 3: Check if user's role has access to the requested path
+    const allowedPatterns = ROLE_PERMISSIONS[user.role.toLowerCase()] || [];
+    const hasAccess = allowedPatterns.some((pattern) => pattern.test(pathname));
+
+    if (!hasAccess && user.role.toLowerCase() !== "admin") {
+      console.log(` Access denied: ${user.role} tried to access ${pathname}`);
+      return sendError(
+        "Access denied: insufficient permissions",
+        ERROR_CODES.AUTH_ERROR,
+        403,
+        { role: user.role, path: pathname }
       );
     }
 
-    // Step 4: Attach user data to headers for downstream routes
+    //  Step 4: Attach user data to headers for downstream handlers
     const newHeaders = new Headers(req.headers);
     newHeaders.set("x-user-id", String(user.id));
     newHeaders.set("x-user-email", user.email);
     newHeaders.set("x-user-role", user.role);
 
-    // Allow the request to continue to the intended API route
     return NextResponse.next({ request: { headers: newHeaders } });
   }
 
-  // Step 5: Skip middleware for non-API routes (frontend pages, etc.)
+  //  Step 5: Skip for non-API routes (frontend pages)
   return NextResponse.next();
 }
 
 /**
- * Configuration: This ensures middleware only runs for API routes.
- * Example: /api/auth/login, /api/admin, /api/users, etc.
+ * Apply middleware only to API routes
  */
 export const config = {
   matcher: ["/api/:path*"],

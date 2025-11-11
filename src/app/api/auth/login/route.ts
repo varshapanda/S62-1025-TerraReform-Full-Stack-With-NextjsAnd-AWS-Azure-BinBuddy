@@ -48,6 +48,7 @@ export async function POST(req: Request) {
     if (!isPasswordValid) {
       return sendError("Invalid credentials", ERROR_CODES.AUTH_ERROR, 401);
     }
+    console.log("Fetched user role from DB:", user.role);
 
     // Access token (15 minutes)
     const accessToken = jwt.sign(
