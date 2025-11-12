@@ -10,6 +10,7 @@ import {
   TrendingUp,
   CheckCircle,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function LandingPage() {
   const [, setScrollY] = useState(0);
@@ -75,10 +76,13 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <button className="bg-linear-to-r from-emerald-500 to-green-500 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-2xl hover:shadow-emerald-500/50 transition transform hover:scale-105 flex items-center justify-center gap-2">
+            <Link
+              href="/signup"
+              className="bg-linear-to-r from-emerald-500 to-green-500 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-2xl hover:shadow-emerald-500/50 transition transform hover:scale-105 inline-flex items-center justify-center gap-2"
+            >
               Start Making A Difference
               <ArrowRight size={20} />
-            </button>
+            </Link>
             <button className="border border-slate-600 px-8 py-4 rounded-lg font-semibold text-lg hover:border-emerald-400 hover:text-emerald-400 transition">
               Learn More
             </button>
@@ -310,12 +314,12 @@ export default function LandingPage() {
             a cleaner, more accountable waste system.
           </p>
           <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <button className="bg-linear-to-r from-emerald-500 to-green-500 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-2xl hover:shadow-emerald-500/50 transition transform hover:scale-105">
+            <Link
+              href="/signup"
+              className="bg-linear-to-r from-emerald-500 to-green-500 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-2xl hover:shadow-emerald-500/50 transition transform hover:scale-105 inline-flex items-center justify-center"
+            >
               Create Your Account
-            </button>
-            <button className="border border-slate-500 px-8 py-4 rounded-lg font-semibold text-lg hover:border-emerald-400 hover:text-emerald-400 transition">
-              See A Demo
-            </button>
+            </Link>
           </div>
         </div>
       </section>

@@ -22,10 +22,10 @@ if (!JWT_SECRET) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, password } = body;
+    const { name, email, password, state, city } = body;
 
     // Validate input
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !state || !city) {
       return sendError(
         "All fields are required",
         ERROR_CODES.VALIDATION_ERROR,
@@ -52,6 +52,8 @@ export async function POST(req: Request) {
         name,
         email,
         password: hashedPassword,
+        state,
+        city,
       },
     });
 

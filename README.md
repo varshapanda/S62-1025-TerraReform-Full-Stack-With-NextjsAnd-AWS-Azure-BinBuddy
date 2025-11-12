@@ -955,3 +955,119 @@ RBAC ensures that:
 -  **Volunteers** verify segregation and forward reports.  
 -  **Authorities** handle scheduling and collection.  
 -  **Admins** manage the entire system and maintain oversight.
+
+
+## Routing & Dynamic Routes 
+
+### Overview
+This documents the Page Routing & Dynamic Routes for **BinBuddy** (Next.js 13+ App Router).  
+It shows the route map (public vs protected), key code snippets (middleware and dynamic route usage), screenshots checklist, and reflections on SEO, UX and error handling.
+
+---
+
+## Route Map
+
+### Public routes
+- `/` — Landing / Home
+- `/signup` — Sign up page
+- `/login` — Login page
+- `/not-found` (client-visible 404 UI file: `app/not-found.tsx`)
+
+### Protected routes (require authentication)
+- `/dashboard` — Generic dashboard redirector to role-based dashboards
+- `/dashboard/user` — User dashboard
+- `/dashboard/volunteer` — Volunteer dashboard
+- `/dashboard/authority` — Authority dashboard
+- `/dashboard/admin` — Admin dashboard
+- `/dashboard/admin/users` — Admin user-management UI
+- `/dashboard/admin/users/[id]` — Dynamic user profile page (example: `/users/1`)
+
+### API routes (serverless inside `app/api`)
+- `POST /api/auth/login` — Login
+- `POST /api/auth/signup` — Signup
+- `GET /api/auth/me` — Current user
+- `GET /api/admin/users` — List users (admin)
+- `PATCH /api/admin/users/[userId]/role` — Update user role (admin)
+
+> Note: API routes are implemented under `app/api/*`. They act as the backend for the Next.js monorepo (no separate service required).
+
+---
+
+## Important Files (where to find / what to change)
+
+**Frontend**
+- `app/layout.tsx` — Global layout & navigation (wraps pages)
+- `app/page.tsx` — Landing page
+- `app/login/page.tsx` — Login page (client)
+- `app/signup/page.tsx` — Signup page (client)
+- `app/not-found.tsx` — Custom 404 UI
+- `app/dashboard/admin/users/page.tsx` — Users listing (lightweight data)
+- `app/dashboard/admin/users/[usersid]/page.tsx` — Dynamic user profile (full details)
+- `dashboard/*` — Role-specific dashboard pages (admin, authority, volunteer, user)
+- `components/*` — Navbar, DashboardLayout, UserManagement, etc.
+
+**Backend (Next.js API routes — server runtime)**
+- `app/api/auth/login/route.ts`
+- `app/api/auth/signup/route.ts`
+- `app/api/auth/me/route.ts` (included `auth/me/route.ts`)
+- `app/api/admin/users/route.ts` (list users)
+- `app/api/admin/users/[userId]/route.ts` (get / patch role)
+
+**Infrastructure / DB**
+- `schema.prisma` — Prisma schema (models: User, Report, Task, Image, RefreshToken, Reward, Notification)
+
+## Frontend Flow & Where to Use Each Page
+
+**Admin user-management flow**
+1. Admin opens `/dashboard/admin` → clicks "Manage Users" → visits `/dashboard/admin/users`.
+2. The `UserManagement` component fetches lightweight list from `GET /api/admin/users`.
+3. Admin changes role via `PATCH /api/admin/users/[userId]/role`.
+4. Optionally, admin clicks a user's name → navigates to `/dashboard/admin/users/[id]` to view full profile and history.
+
+**Auth flow**
+- Unauthenticated user tries to access `/dashboard/*` → middleware redirects to `/login`.
+- After successful login (server issues cookie JWT), middleware allows protected routes.
+
+---
+
+## Backend Requirements (short checklist)
+- `verifyToken(req)` — must validate cookie or Authorization header JWT and return `{ success, user, error }`.
+- `app/api/admin/users/route.ts` — GET: return paginated, filtered user list (id, name, email, role, points).
+- `app/api/admin/users/[userId]/route.ts` — PATCH: change role (admin only).
+- `app/api/auth/me` — return minimal user info used client-side to detect role.
+- Prisma DB connection `lib/prisma.ts` and `schema.prisma` migrated.
+
+---
+
+## Screenshots checklist (placeholders)
+
+- `/dashboard/admin` while logged out then logged in.
+![dashboard-access](./public/dashboard.png)
+
+- `/dashboard/admin/users` — Admin users table.
+![users-table](./public/dashboard-users.png)
+
+- `/users/1` — Dynamic user profile page.
+![user/*](./public/users.png)
+
+- `docs/screenshots/404.png` — Custom `app/not-found.tsx` UI.
+![not-found](./public/not-found.png)
+
+---
+
+## Reflection
+
+### How dynamic routing supports scalability and SEO
+- Dynamic routes let you create predictable, crawlable URLs (e.g., `/users/123`).
+- Use `generateMetadata` and server-side fetches to populate meta tags (title, description, open graph) per dynamic page for better SEO.
+- Static-generation or ISR for high-traffic profiles reduces server cost and improves TTFB for bots and users.
+
+### How breadcrumbs & structured routes improve UX
+- Breadcrumbs show context and reduce cognitive load — users can jump back to `/users` or `/dashboard`.
+- Structured routes reflect information hierarchy (e.g., `/dashboard/admin/users/123`) which improves navigation and makes deep links meaningful.
+
+### Handling error states gracefully
+- Provide`app/not-found.tsx` (404) so users see helpful recovery actions.
+- Log errors server-side with an error-id and show the id in UI to help debugging without exposing internals.
+- For API errors, return consistent structured JSON (`{ success, errorCode, message }`) so frontend can show friendly messages.
+ 

@@ -5,40 +5,70 @@ import { verifyToken } from "@/lib/auth";
 import { ERROR_CODES } from "@/lib/errorCodes";
 import { sendError } from "@/lib/responseHandler";
 
-// Ensure middleware runs in Node.js (not Edge runtime)
 export const runtime = "nodejs";
 
-/**
- * Role-based access matrix defining which routes are accessible to which roles.
- */
 const ROLE_PERMISSIONS: Record<string, RegExp[]> = {
-  user: [/^\/api\/reports/, /^\/api\/tasks\/view/], // users can report or view tasks
+  user: [/^\/api\/reports/, /^\/api\/tasks\/view/],
   volunteer: [/^\/api\/reports\/.*\/verify/, /^\/api\/reports\/pending/],
   authority: [/^\/api\/tasks/, /^\/api\/reports\/verified/],
   admin: [/^\/api\/admin/, /^\/api\/reports/, /^\/api\/tasks/, /^\/api\/users/],
 };
 
-/**
- * Global middleware for JWT validation + Role-Based Access Control
- */
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  //  Step 1: Public routes (no authentication needed)
-  const publicPaths = [
+  // Public API routes (no authentication needed)
+  const publicApiPaths = [
     "/api/auth/login",
     "/api/auth/signup",
     "/api/auth/logout",
     "/api/auth/refresh",
   ];
-  if (publicPaths.includes(pathname)) return NextResponse.next();
 
-  //  Step 2: Protect all /api routes
+  // API routes that ALL authenticated users can access (no role check)
+  const commonAuthApiPaths = ["/api/auth/me", "/api/user/profile"];
+
+  // Auth pages that authenticated users shouldn't access
+  const authPages = ["/login", "/signup", "/"];
+
+  // Protected pages that require authentication
+  const protectedPages = ["/dashboard"];
+
+  // Check authentication status
+  const { success, user } = verifyToken(req);
+
+  // === PAGE REDIRECTS ===
+
+  // Redirect authenticated users away from login/signup pages to their role-based dashboard
+  if (authPages.includes(pathname) && success && user) {
+    const dashboardPath = getDashboardPath(user.role);
+    return NextResponse.redirect(new URL(dashboardPath, req.url));
+  }
+
+  // Redirect unauthenticated users from protected pages to login
+  if (protectedPages.some((path) => pathname.startsWith(path)) && !success) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  // Redirect to role-based dashboard from generic /dashboard
+  if (pathname === "/dashboard" && success && user) {
+    const dashboardPath = getDashboardPath(user.role);
+    if (dashboardPath !== "/dashboard") {
+      return NextResponse.redirect(new URL(dashboardPath, req.url));
+    }
+  }
+
+  // === API ROUTES ===
+
   if (pathname.startsWith("/api/")) {
-    const { success, user, error, errorType } = verifyToken(req);
+    // Allow public API routes
+    if (publicApiPaths.includes(pathname)) {
+      return NextResponse.next();
+    }
 
-    // Token missing or invalid
+    // Require authentication for all other API routes
     if (!success || !user) {
+      const { error, errorType } = verifyToken(req);
       return sendError(
         error || "Unauthorized access. Please log in.",
         ERROR_CODES.AUTH_ERROR,
@@ -50,12 +80,22 @@ export function middleware(req: NextRequest) {
       );
     }
 
-    // ✅ Step 3: Check if user's role has access to the requested path
+    // Allow common authenticated API routes (no role check)
+    if (commonAuthApiPaths.includes(pathname)) {
+      const newHeaders = new Headers(req.headers);
+      newHeaders.set("x-user-id", String(user.id));
+      newHeaders.set("x-user-email", user.email);
+      newHeaders.set("x-user-role", user.role);
+      return NextResponse.next({ request: { headers: newHeaders } });
+    }
+
+    // Role-based access control for specific API routes
     const allowedPatterns = ROLE_PERMISSIONS[user.role.toLowerCase()] || [];
     const hasAccess = allowedPatterns.some((pattern) => pattern.test(pathname));
 
+    // Admins have access to everything
     if (!hasAccess && user.role.toLowerCase() !== "admin") {
-      console.log(` Access denied: ${user.role} tried to access ${pathname}`);
+      console.log(`Access denied: ${user.role} tried to access ${pathname}`);
       return sendError(
         "Access denied: insufficient permissions",
         ERROR_CODES.AUTH_ERROR,
@@ -64,7 +104,7 @@ export function middleware(req: NextRequest) {
       );
     }
 
-    //  Step 4: Attach user data to headers for downstream handlers
+    // Attach user data to headers for downstream handlers
     const newHeaders = new Headers(req.headers);
     newHeaders.set("x-user-id", String(user.id));
     newHeaders.set("x-user-email", user.email);
@@ -73,13 +113,27 @@ export function middleware(req: NextRequest) {
     return NextResponse.next({ request: { headers: newHeaders } });
   }
 
-  //  Step 5: Skip for non-API routes (frontend pages)
   return NextResponse.next();
 }
 
-/**
- * Apply middleware only to API routes
- */
+// Helper function to get role-based dashboard path
+function getDashboardPath(role: string): string {
+  const roleMap: Record<string, string> = {
+    user: "/dashboard/user",
+    volunteer: "/dashboard/volunteer",
+    authority: "/dashboard/authority",
+    admin: "/dashboard/admin",
+  };
+  return roleMap[role.toLowerCase()] || "/dashboard/user";
+}
+
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: [
+    "/api/:path*",
+    "/dashboard/:path*",
+    "/dashboard",
+    "/login",
+    "/signup",
+    "/",
+  ],
 };
