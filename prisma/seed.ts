@@ -19,6 +19,8 @@ async function main() {
       password: password1,
       points: 50,
       role: "user",
+      state: "Delhi",
+      city: "New Delhi",
     },
   });
   console.log("Created user:", user1.email);
@@ -32,6 +34,8 @@ async function main() {
       password: password2,
       points: 100,
       role: "user",
+      state: "Delhi",
+      city: "New Delhi",
     },
   });
   console.log("Created user:", user2.email);
@@ -45,11 +49,13 @@ async function main() {
       password: password3,
       points: 75,
       role: "user",
+      state: "Delhi",
+      city: "New Delhi",
     },
   });
   console.log("Created user:", user3.email);
 
-  // Create Refresh Tokens for users (simulating active sessions)
+  // Create Refresh Tokens for users
   const refreshToken1 = jwt.sign(
     { id: user1.id, type: "refresh" },
     REFRESH_TOKEN_SECRET,
@@ -64,7 +70,7 @@ async function main() {
     data: {
       userId: user1.id,
       token: hashedRefreshToken1,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   });
   console.log("Created refresh token for user1");
@@ -88,7 +94,7 @@ async function main() {
   });
   console.log("Created refresh token for user2");
 
-  // Create a revoked refresh token for user3 (simulating logged out session)
+  // Create a revoked refresh token for user3
   const refreshToken3 = jwt.sign(
     { id: user3.id, type: "refresh" },
     REFRESH_TOKEN_SECRET,
@@ -104,55 +110,67 @@ async function main() {
       userId: user3.id,
       token: hashedRefreshToken3,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      revokedAt: new Date(), // This token is revoked
+      revokedAt: new Date(),
     },
   });
   console.log("Created revoked refresh token for user3");
 
-  // Create Report 1
+  // Create Report 1 - USING NEW SCHEMA
   const report1 = await prisma.report.create({
     data: {
       imageUrl: "https://example.com/waste-plastic.jpg",
+      imageHash: `hash-${Date.now()}-1`,
+      category: "DRY",
+      lat: 28.6315,
+      lng: 77.2167,
+      note: "Plastic bottles and packaging near food court",
       location: "Connaught Place, New Delhi",
-      latitude: 28.6315,
-      longitude: 77.2167,
       wasteType: "plastic",
       wasteCategory: "recyclable",
       verified: true,
-      status: "verified",
-      userId: user1.id,
+      status: "VERIFIED",
+      verifiedCount: 1,
+      reporterId: user1.id, // ← CHANGED from userId to reporterId
     },
   });
   console.log("Created report:", report1.id);
 
-  // Create Report 2
+  // Create Report 2 - USING NEW SCHEMA
   const report2 = await prisma.report.create({
     data: {
       imageUrl: "https://example.com/waste-organic.jpg",
+      imageHash: `hash-${Date.now()}-2`,
+      category: "WET",
+      lat: 28.6519,
+      lng: 77.19,
+      note: "Food waste and organic material near market area",
       location: "Karol Bagh, New Delhi",
-      latitude: 28.6519,
-      longitude: 77.19,
       wasteType: "organic",
       wasteCategory: "non-recyclable",
       verified: true,
-      status: "verified",
-      userId: user2.id,
+      status: "VERIFIED",
+      verifiedCount: 1,
+      reporterId: user2.id, // ← CHANGED from userId to reporterId
     },
   });
   console.log("Created report:", report2.id);
 
-  // Create Report 3
+  // Create Report 3 - USING NEW SCHEMA
   const report3 = await prisma.report.create({
     data: {
       imageUrl: "https://example.com/waste-metal.jpg",
+      imageHash: `hash-${Date.now()}-3`,
+      category: "DRY",
+      lat: 28.6129,
+      lng: 77.2295,
+      note: "Metal cans and containers near monument",
       location: "India Gate, New Delhi",
-      latitude: 28.6129,
-      longitude: 77.2295,
       wasteType: "metal",
       wasteCategory: "recyclable",
       verified: false,
-      status: "pending",
-      userId: user3.id,
+      status: "PENDING",
+      verifiedCount: 0,
+      reporterId: user3.id, // ← CHANGED from userId to reporterId
     },
   });
   console.log("Created report:", report3.id);
@@ -266,11 +284,11 @@ async function main() {
       },
       {
         url: "https://example.com/images/recycling-center.jpg",
-        uploadedBy: user1.id, // extra user upload not tied to a report
+        uploadedBy: user1.id,
       },
       {
         url: "https://example.com/images/community-cleanup.jpg",
-        uploadedBy: user2.id, // extra user upload not tied to a report
+        uploadedBy: user2.id,
       },
     ],
   });

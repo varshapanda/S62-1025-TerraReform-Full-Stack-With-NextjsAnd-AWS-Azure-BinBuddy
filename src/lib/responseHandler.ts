@@ -1,4 +1,3 @@
-// lib/responseHandler.ts
 import { NextResponse } from "next/server";
 
 export type ErrorObject = {

@@ -1070,4 +1070,248 @@ It shows the route map (public vs protected), key code snippets (middleware and 
 - Provide`app/not-found.tsx` (404) so users see helpful recovery actions.
 - Log errors server-side with an error-id and show the id in UI to help debugging without exposing internals.
 - For API errors, return consistent structured JSON (`{ success, errorCode, message }`) so frontend can show friendly messages.
+
+
+
+## File Upload API with AWS S3 (Pre-signed URLs)
+
+### Project Overview
+This part describes the file upload flow implemented in this project using pre-signed URLs (AWS S3). The goal is secure, scalable uploads from client -> S3 without streaming files through the backend. The project also includes input validation using Zod, consistent error responses, and Prisma models for storing file metadata.
+
+---
+
+## Quick Setup (Terminal commands)
+```bash
+# Install dependencies
+npm install
+
+# Install AWS SDK and presigner
+npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+
+# Install Zod 
+npm install zod 
+
+# Create prisma migration (after editing schema.prisma)
+npx prisma migrate dev --name init
+
+# Generate Prisma client
+npx prisma generate
+
+# Run development server
+npm run dev
+```
+
+> Environment variables (example `.env`)
+```bash
+
+AWS_ACCESS_KEY_ID=your-access-key-here
+AWS_SECRET_ACCESS_KEY=your-secret-key-here
+AWS_REGION=your-aws-region-here
+AWS_BUCKET_NAME=your-bucket-name-here
+NEXT_PUBLIC_S3_URL=https://your-bucket-name.s3.your-aws-region.amazonaws.com
+
+```
+
+---
+
+## Architecture & Flow
+### 1. High-level flow
+1. Client requests a pre-signed upload URL from `POST /api/uploads/presign` with `{ filename, fileType, fileSize }`.
+2. Server validates the request using Zod and (optionally) additional business rules.
+3. Server creates a pre-signed PUT URL using AWS SDK and returns it to the client (short expiry, e.g., 300s).
+4. Client uploads directly to S3 using HTTP PUT to the presigned URL.
+5. Client constructs the public image URL (or asks the server to compute it) and sends metadata to `POST /api/reports/create`.
+6. Server validates report creation payload using Zod and creates a `Report` record in the database (Prisma).
+
+### 2. Why pre-signed URLs?
+- Credentials are never exposed to clients.
+- Backend does not handle file streams: reduces memory and network load.
+- Uploads scale directly to S3 and are faster.
+
+---
+
+## Minimal API contracts 
+### Request to generate presigned URL
+`POST /api/uploads/presign`
+Body:
+```json
+{
+  "filename": "photo.jpg",
+  "fileType": "image/jpeg",
+  "fileSize": 123456
+}
+```
+
+### Response (success)
+```json
+{
+  "success": true,
+  "message": "Presigned URL generated successfully",
+  "data": {
+    "uploadUrl": "https://your-bucket.s3.region.amazonaws.com/reports/....?X-Amz-...",
+    "expiresIn": 300
+  },
+  "timestamp": "2025-11-13T00:00:00.000Z"
+}
+```
+
+---
+
+## Minimal server-side snippets (already in project)
+**Presign generator (conceptual):**
+```ts
+const command = new PutObjectCommand({
+  Bucket: process.env.AWS_BUCKET_NAME!,
+  Key: `reports/${Date.now()}-${filename}`,
+  ContentType: contentType,
+});
+const url = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+```
+
+**Report creation handler (conceptual):**
+```ts
+const validated = reportCreationSchema.parse(body);
+await prisma.report.create({ data: {
+  reporterId: String(user.id),
+  imageUrl: validated.imageUrl,
+  category: validated.category,
+  lat: validated.lat,
+  lng: validated.lng,
+}});
+```
+
+---
+
+## Zod validation
+### Shared schemas (lib/validation/reportSchema.ts)
+A single shared file exports:
+- `presignUrlRequestSchema` — ensures `filename` non-empty, `fileType` starts with `image/`, `fileSize` <= 5MB.
+- `reportCreationSchema` — ensures `imageUrl` is a URL, `lat`/`lng` are valid ranges, `category` is one of allowed enums, `note` max length 500.
+
+### Example: client + server reuse
+- Import `presignUrlRequestSchema` into the API route that issues the presigned URL.
+- Import the same schema into a client-side validator to catch client-side errors early.
+This reduces duplication and ensures client and server agree on "what's valid".
+
+---
+
+## Error-handling structure
+All responses use a uniform envelope:
+```json
+{
+  "success": boolean,
+  "message": string,
+  "data": any | undefined,
+  "error": { "code": string, "details": any } | undefined,
+  "timestamp": "iso-string"
+}
+```
+Validation errors return `success: false`, `message: "Validation Error"`, `error.code: "VALIDATION_ERROR"`, and `error.details` contains Zod issues.
+
+---
+
+## Testing the Upload Flow (curl / Postman)
+### 1. Request presigned URL
+```bash
+curl -X POST "http://localhost:3000/api/uploads/presign"   -H "Content-Type: application/json"   -d '{"filename":"test.jpg","fileType":"image/jpeg","fileSize":102400}'
+```
+![Presign Response](./public/presign-response.png)
+
+
+### 2. Upload file to S3 using returned URL (use the `uploadUrl` from step 1)
+```bash
+curl -X PUT "https://...uploadUrl..."   -H "Content-Type: image/jpeg"   --upload-file ./test.jpg
+```
+
+### 3. Create report (store URL in DB)
+Construct the public image URL and then:
+```bash
+curl -X POST "http://localhost:3000/api/reports/create"   -H "Content-Type: application/json"   -H "Authorization: Bearer <JWT>"   -d '{"imageUrl":"https://your-bucket.s3.region.amazonaws.com/reports/163...-test.jpg","category":"WET","lat":12.34,"lng":56.78}'
+```
+
+![Report Creation Response](./public/report-creation-response.png)
+
+### Example server-side logs (what to expect)
+```
+Step 1: Requesting presigned URL...
+Step 2: Upload URL received: https://your-bucket...
+Step 2: Uploading file to S3...
+Step 3: File uploaded successfully to S3
+Step 4: Creating report in DB...
+Report created successfully with id: cjld2cxyz0000...
+```
+
+---
+
+## Proof of Upload 
+Include screenshots or logs when submitting the assignment:
+1. Screenshot of the S3 bucket object list showing your uploaded file (path: `reports/…`).
+
+![S3 Bucket](./public/s3-bucket.png)
+
+
+2. Screenshot of the API response that returned the presigned URL.
+![Presign Response](./public/presign-response.png)
+
+3. Screenshot or DB query result showing a matching `report` row with `imageUrl` saved.
+![Report Creation Response](./public/report-creation-response.png)
+
+
+If you cannot include images in this repo, include a `logs/` folder with `presign.log` and `upload.log` text files.
+
+---
+
+## Prisma schema highlights (relevant models)
+- `Report` model stores `imageUrl`, `imageHash?`, `category`, `lat`, `lng`, `status`, timestamps and a relation to `User`.
+- `Image` model stores per-image records and relations to `Report` and `User`.
+
+Example Prisma migration command shown earlier: `npx prisma migrate dev --name add-report-image-models`
+
+---
+
+## Security Considerations & Lifecycle Policies
+### Security
+- Do not make S3 bucket public by default. Use private buckets and generate pre-signed URLs for uploads and controlled access.
+- Keep presigned URL TTL short (30–300 seconds). This project uses 300s by default; consider shorter TTLs for sensitive environments.
+- Validate file type, file size, and optionally check file hashes after upload.
+- Use IAM roles with least privilege: only allow `s3:PutObject` for the upload key prefix (e.g., `reports/*`) and deny wide S3 permissions.
+- Rotate AWS credentials and prefer using IAM roles (ECS/EKS/EC2) or environment-specific secrets manager in production.
+
+### Lifecycle & Cost Controls
+- Configure S3 lifecycle rules:
+  - Transition older objects to Glacier / Glacier Deep Archive after N days.
+  - Delete temporary or staging uploads after a retention window (e.g., 30 days) if not confirmed.
+- Use object tagging and lifecycle rules to archive or delete assets created by automated/testing uploads.
+- For large-scale usage, consider S3 Object Lock / Versioning if you need immutability for evidence.
+
+---
+
+## Validation & Edge Cases
+- Client-side validation: quick feedback — file type, file size, preview generation.
+- Server-side validation (mandatory): Zod checks, ENSURE server re-checks `Content-Type` and size metadata if necessary.
+- Duplicate detection: this project optionally uses `imageHash` to detect duplicates within a short window (example: 1 hour).
+- Failure modes:
+  - Expired presigned URL: return 400 with message suggesting re-request.
+  - Upload failed (non-2xx from S3): client should retry or request new presigned URL.
+  - DB insertion failed: return 500 and log full error for investigation.
+
+---
+
+## Reflection on Schema Reuse and Maintainability
+- Reusing Zod schemas across client and server prevents drift between client-side validation and server expectations.
+- Centralized validation files simplify changes and reduce duplicate logic.
+- Consistent response envelope makes front-end error handling straightforward and predictable.
+
+---
+
+## Next Steps and Improvements
+- Replace long-lived AWS keys with IAM roles and environment-specific secret managers.
+- Add server-side verification webhook: verify object metadata or hash after S3 upload using SNS/SQS or S3 event notifications.
+- Add resumable uploads for large files (multipart upload).
+- Add automated integration tests for the full flow (presign -> upload -> DB insert).
+
+---
+
+
+
  

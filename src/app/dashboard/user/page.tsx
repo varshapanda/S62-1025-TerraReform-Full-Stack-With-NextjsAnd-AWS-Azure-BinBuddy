@@ -1,11 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 
-export const metadata = {
-  title: "User Dashboard - BinBuddy",
-  description: "Your BinBuddy user dashboard",
-};
+interface Report {
+  id: string;
+  category: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function UserDashboardPage() {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      const res = await fetch("/api/reports/my-reports");
+      const data = await res.json();
+      if (data.success) {
+        setReports(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch reports:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stats = {
+    total: reports.length,
+    verified: reports.filter((r) => r.status === "VERIFIED").length,
+    pending: reports.filter((r) => r.status === "PENDING").length,
+  };
+
   return (
     <DashboardLayout role="user">
       <div className="space-y-6">
@@ -20,15 +53,17 @@ export default function UserDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-slate-400 text-sm mb-2">Total Reports</h3>
-            <p className="text-3xl font-bold text-white">0</p>
+            <p className="text-3xl font-bold text-white">{stats.total}</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-slate-400 text-sm mb-2">Verified Reports</h3>
-            <p className="text-3xl font-bold text-emerald-400">0</p>
+            <p className="text-3xl font-bold text-emerald-400">
+              {stats.verified}
+            </p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-slate-400 text-sm mb-2">Pending Reports</h3>
-            <p className="text-3xl font-bold text-amber-400">0</p>
+            <p className="text-3xl font-bold text-amber-400">{stats.pending}</p>
           </div>
         </div>
 
@@ -37,24 +72,52 @@ export default function UserDashboardPage() {
           <h3 className="text-xl font-semibold text-white mb-4">
             Quick Actions
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button className="p-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-left transition">
-              <h4 className="text-emerald-400 font-semibold mb-1">
-                📸 Report Waste
-              </h4>
-              <p className="text-slate-400 text-sm">
-                Submit a new waste report
-              </p>
-            </button>
-            <button className="p-4 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-left transition">
-              <h4 className="text-blue-400 font-semibold mb-1">
-                📋 View My Reports
-              </h4>
-              <p className="text-slate-400 text-sm">
-                Check your submitted reports
-              </p>
-            </button>
-          </div>
+          <Link
+            href="/dashboard/user/report"
+            className="inline-block p-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-left transition"
+          >
+            <h4 className="text-emerald-400 font-semibold mb-1">
+              📸 Report Waste
+            </h4>
+            <p className="text-slate-400 text-sm">Submit a new waste report</p>
+          </Link>
+        </div>
+
+        {/* Recent Reports */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">
+            Recent Reports
+          </h3>
+          {loading ? (
+            <p className="text-slate-400">Loading...</p>
+          ) : reports.length === 0 ? (
+            <p className="text-slate-400">No reports yet</p>
+          ) : (
+            <div className="space-y-3">
+              {reports.map((report) => (
+                <div
+                  key={report.id}
+                  className="p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex justify-between items-center"
+                >
+                  <div>
+                    <p className="text-white font-medium">{report.category}</p>
+                    <p className="text-slate-400 text-sm">
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                      report.status === "VERIFIED"
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-amber-500/20 text-amber-400"
+                    }`}
+                  >
+                    {report.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

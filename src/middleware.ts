@@ -1,4 +1,3 @@
-// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth";
@@ -8,10 +7,29 @@ import { sendError } from "@/lib/responseHandler";
 export const runtime = "nodejs";
 
 const ROLE_PERMISSIONS: Record<string, RegExp[]> = {
-  user: [/^\/api\/reports/, /^\/api\/tasks\/view/],
-  volunteer: [/^\/api\/reports\/.*\/verify/, /^\/api\/reports\/pending/],
-  authority: [/^\/api\/tasks/, /^\/api\/reports\/verified/],
-  admin: [/^\/api\/admin/, /^\/api\/reports/, /^\/api\/tasks/, /^\/api\/users/],
+  user: [
+    /^\/api\/reports/, // Create/fetch reports
+    /^\/api\/tasks\/view/, // View tasks
+    /^\/api\/uploads\/presign/, // Upload images
+    /^\/api\/user\/profile/, // View own profile
+  ],
+  volunteer: [
+    /^\/api\/reports\/.*\/verify/, // Verify reports
+    /^\/api\/reports\/pending/, // View pending reports
+    /^\/api\/uploads\/presign/, // Upload images
+  ],
+  authority: [
+    /^\/api\/tasks/, // Manage tasks
+    /^\/api\/reports\/verified/, // View verified reports
+    /^\/api\/uploads\/presign/, // Upload images
+  ],
+  admin: [
+    /^\/api\/admin/, // All admin routes
+    /^\/api\/reports/, // All report routes
+    /^\/api\/tasks/, // All task routes
+    /^\/api\/users/, // All user routes
+    /^\/api\/uploads/, // All upload routes
+  ],
 };
 
 export function middleware(req: NextRequest) {
@@ -32,7 +50,7 @@ export function middleware(req: NextRequest) {
   const authPages = ["/login", "/signup", "/"];
 
   // Protected pages that require authentication
-  const protectedPages = ["/dashboard"];
+  const protectedPages = ["/dashboard", "/dashboard/user/report"];
 
   // Check authentication status
   const { success, user } = verifyToken(req);

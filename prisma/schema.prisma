@@ -1,10 +1,4 @@
-enum Role {
-  user
-  admin
-  volunteer
-  authority
-}
-
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,18 +8,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  user
+  admin
+  volunteer
+  authority
+}
+
 model User {
-  id            Int            @id @default(autoincrement())
+  id            String          @id @default(cuid())
   name          String
-  email         String         @unique
+  email         String          @unique
   password      String?
-  googleId      String?        @unique
-  points        Int            @default(0)
+  googleId      String?         @unique
+  points        Int             @default(0)
   state         String?
   city          String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  role          Role           @default(user)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  role          Role            @default(user)
+  
+  // Relations
   images        Image[]
   notifications Notification[]
   refreshTokens RefreshToken[]
@@ -38,75 +41,91 @@ model User {
 }
 
 model RefreshToken {
-  id        Int       @id @default(autoincrement())
-  userId    Int
-  token     String    @unique
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
   expiresAt DateTime
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
   revokedAt DateTime?
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
 
 model Report {
-  id            Int      @id @default(autoincrement())
+  id            String   @id @default(cuid())
   imageUrl      String
-  location      String
+  imageHash     String?  @unique
+  category      String
+  note          String?
+  lat           Float
+  lng           Float
+  
+  // Legacy fields
+  location      String?
   latitude      Float?
   longitude     Float?
   wasteType     String?
   wasteCategory String?
+  
+  status        String   @default("PENDING")
   verified      Boolean  @default(false)
-  status        String   @default("pending")
-  userId        Int
+  verifiedCount Int      @default(0)
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  
+  // Relations
+  reporterId    String
+  reporter      User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
   images        Image[]
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   task          Task?
 
-  @@index([userId])
+  @@index([reporterId])
   @@index([status])
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
-  reportId    Int       @unique
-  status      String    @default("available")
-  claimedBy   Int?
+  id          String   @id @default(cuid())
+  reportId    String   @unique
+  status      String   @default("available")
+  claimedBy   String?
   claimedAt   DateTime?
   completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  collector   User?     @relation(fields: [claimedBy], references: [id])
-  report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  collector   User?    @relation(fields: [claimedBy], references: [id])
 
   @@index([status])
   @@index([claimedBy])
 }
 
 model Reward {
-  id          Int      @id @default(autoincrement())
-  userId      Int
+  id          String   @id @default(cuid())
+  userId      String
   points      Int
   action      String
   description String
   createdAt   DateTime @default(now())
+  
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 model Notification {
-  id        Int      @id @default(autoincrement())
-  userId    Int
+  id        String   @id @default(cuid())
+  userId    String
   type      String
   title     String
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+  
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -114,12 +133,13 @@ model Notification {
 }
 
 model Image {
-  id         Int      @id @default(autoincrement())
+  id         String   @id @default(cuid())
   url        String
-  reportId   Int?
-  uploadedBy Int?
+  reportId   String?
+  uploadedBy String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  
   report     Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
   user       User?    @relation(fields: [uploadedBy], references: [id])
 
