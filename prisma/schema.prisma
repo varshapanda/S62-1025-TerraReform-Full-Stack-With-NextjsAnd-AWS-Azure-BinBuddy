@@ -15,6 +15,12 @@ enum Role {
   authority
 }
 
+enum ReportStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 model User {
   id            String          @id @default(cuid())
   name          String
@@ -70,9 +76,11 @@ model Report {
   wasteType     String?
   wasteCategory String?
   
-  status        String   @default("PENDING")
-  verified      Boolean  @default(false)
-  verifiedCount Int      @default(0)
+  status      ReportStatus @default(PENDING)
+  verifiedAt  DateTime?
+  verifiedBy  String? // Volunteer ID
+  remarks     String?
+  rejectionReason String?
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
