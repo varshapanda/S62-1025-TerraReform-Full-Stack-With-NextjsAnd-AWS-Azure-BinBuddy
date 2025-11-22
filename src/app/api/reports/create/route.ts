@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create report
+    // Create report WITH image record in a transaction
     const report = await prisma.report.create({
       data: {
         reporterId: String(user.id),
@@ -51,10 +51,34 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Create the image record separately (more reliable)
+    await prisma.image.create({
+      data: {
+        url: validated.imageUrl,
+        reportId: report.id,
+        uploadedBy: String(user.id),
+      },
+    });
+
+    // Fetch the complete report with images
+    const completeReport = await prisma.report.findUnique({
+      where: { id: report.id },
+      include: {
+        images: true,
+        reporter: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
     // TODO: Enqueue verification job (BullMQ)
     // await verificationQueue.add("verify-report", { reportId: report.id });
 
-    return sendSuccess(report, "Report created successfully", 201);
+    return sendSuccess(completeReport, "Report created successfully", 201);
   } catch (error: unknown) {
     if (error instanceof ZodError) {
       return sendError(
