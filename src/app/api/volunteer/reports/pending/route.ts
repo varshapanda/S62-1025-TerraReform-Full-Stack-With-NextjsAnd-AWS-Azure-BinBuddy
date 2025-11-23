@@ -5,6 +5,7 @@ import { verifyToken } from "@/lib/auth";
 import { pendingReportsQuerySchema } from "@/lib/validation/volunteerSchemas";
 import { ERROR_CODES } from "@/lib/errorCodes";
 import { ZodError } from "zod";
+import { generateReadPresignedUrl } from "@/lib/s3Client"; // ADDED
 
 export async function GET(req: NextRequest) {
   try {
@@ -42,9 +43,7 @@ export async function GET(req: NextRequest) {
             name: true,
           },
         },
-        images: {
-          take: 1,
-        },
+        images: true, // CHANGED from take: 1
       },
       orderBy: {
         createdAt: "asc",
@@ -53,13 +52,27 @@ export async function GET(req: NextRequest) {
       take: validatedQuery.limit,
     });
 
+    // ADDED: Generate presigned URLs
+    const reportsWithSignedUrls = await Promise.all(
+      reports.map(async (report) => ({
+        ...report,
+        imageUrl: await generateReadPresignedUrl(report.imageUrl),
+        images: await Promise.all(
+          report.images.map(async (img) => ({
+            ...img,
+            url: await generateReadPresignedUrl(img.url),
+          }))
+        ),
+      }))
+    );
+
     const totalCount = await prisma.report.count({
       where: { status: "PENDING" },
     });
 
     return sendSuccess(
       {
-        reports,
+        reports: reportsWithSignedUrls, // CHANGED from reports
         pagination: {
           page: validatedQuery.page,
           limit: validatedQuery.limit,
