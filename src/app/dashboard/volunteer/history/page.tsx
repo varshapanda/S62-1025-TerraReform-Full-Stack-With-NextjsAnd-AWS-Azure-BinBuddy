@@ -13,6 +13,14 @@ interface Report {
   remarks?: string;
   rejectionReason?: string;
   createdAt: string;
+  // Address fields
+  address?: string;
+  houseNo?: string;
+  street?: string;
+  locality?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   reporter: {
     name?: string;
     email: string;
@@ -83,6 +91,24 @@ export default function VerificationHistoryPage() {
 
   const getImageUrl = (report: Report) => {
     return report.images?.[0]?.url || report.imageUrl;
+  };
+
+  // Format address for display
+  const getFormattedAddress = (report: Report) => {
+    if (report.address) {
+      return report.address;
+    }
+
+    const parts = [
+      report.houseNo,
+      report.street,
+      report.locality,
+      report.city,
+      report.state,
+      report.pincode,
+    ].filter(Boolean);
+
+    return parts.length > 0 ? parts.join(", ") : "Address not provided";
   };
 
   return (
@@ -183,13 +209,19 @@ export default function VerificationHistoryPage() {
                       </p>
                       <p>
                         Reported:{" "}
-                        {new Date(report.createdAt).toLocaleDateString()}
+                        {new Date(report.createdAt).toLocaleDateString("en-GB")}
                       </p>
                       <p>
                         Verified:{" "}
                         {report.verifiedAt
-                          ? new Date(report.verifiedAt).toLocaleString()
+                          ? new Date(report.verifiedAt).toLocaleString("en-GB")
                           : "N/A"}
+                      </p>
+                      <p className="flex items-start gap-1">
+                        <span className="font-semibold">Location:</span>
+                        <span className="flex-1">
+                          {getFormattedAddress(report)}
+                        </span>
                       </p>
                     </div>
                   </div>

@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
       where: { reporterId: String(user.id) },
       orderBy: { createdAt: "desc" },
       take: 10, // Latest 10
+      include: {
+        images: true, // Include associated images
+      },
     });
 
     return sendSuccess(reports);

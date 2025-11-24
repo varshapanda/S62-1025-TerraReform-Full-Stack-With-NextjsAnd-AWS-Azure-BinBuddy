@@ -1312,6 +1312,120 @@ Example Prisma migration command shown earlier: `npx prisma migrate dev --name a
 
 ---
 
+## Map & Address Integration
+
+This update introduces map-based location selection, reverse geocoding using OpenStreetMap (Nominatim), structured address storage, and address display in volunteer panels.
+
+## Features Added
+
+#### 1. **Map-based Location Picker (Leaflet + OpenStreetMap)**
+- Users can select waste location using an interactive map.
+- Marker is draggable and updates coordinates automatically.
+- Map loads dynamically to avoid SSR issues in Next.js.
+
+#### 2. **Auto-detect My Location**
+- Uses browser geolocation to instantly set user’s coordinates.
+- Automatically centers map and places marker.
+
+#### 3. **Reverse Geocoding (Nominatim)**
+- Converts lat/lng into detailed address fields:
+  - houseNo
+  - street
+  - locality
+  - city
+  - state
+  - pincode
+  - full formatted address
+- Fills UI fields automatically.
+
+#### 4. **Manual Address Entry Mode**
+- Users can switch between:
+  - **Use Map**
+  - **Enter Manually**
+- Manual mode allows full editable address fields.
+
+### 5. **Report Submission Updates**
+When creating a report, the following are now sent to backend:
+
+```json
+{
+  "imageUrl": "...",
+  "category": "WET",
+  "lat": 12.34,
+  "lng": 56.78,
+  "address": "Full address",
+  "houseNo": "12A",
+  "street": "Main Road",
+  "locality": "Adugodi",
+  "city": "Bengaluru",
+  "state": "Karnataka",
+  "pincode": "560030"
+}
+```
+
+#### 6. **Backend Changes**
+- Updated Zod schema to support all address fields.
+- Updated Prisma `report.create()` to store address fields.
+- Updated volunteer APIs to return address.
+
+#### 7. **Volunteer UI Update**
+Both “Verify Reports” and “Verification History” now show:
+
+- Formatted address
+- City, state, pincode
+- Fallback if address is missing
+
+---
+
+## Database Updates (Prisma)
+
+Add to `Report` model:
+
+```prisma
+address   String?
+houseNo   String?
+street    String?
+locality  String?
+city      String?
+state     String?
+pincode   String?
+```
+
+Run migration:
+
+```bash
+npx prisma migrate dev --name add_address_fields
+```
+
+---
+
+### Reverse Geocoding (Nominatim)
+
+API used:
+
+```
+https://nominatim.openstreetmap.org/reverse?format=json&lat=<lat>&lon=<lng>&addressdetails=1
+```
+
+Headers:
+
+```
+User-Agent: WasteReportApp/1.0
+```
+
+---
+
+![Map Location Picker](./public/reportwaste_address.png)
+
+## File Upload Flow (unchanged)
+1. Frontend requests S3 presigned URL
+2. Image uploaded via PUT
+3. Prisma stores image URL + image record
+
+
+
+---
+
 
 
  

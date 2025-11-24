@@ -48,6 +48,14 @@ export async function POST(req: NextRequest) {
         lat: validated.lat,
         lng: validated.lng,
         status: "PENDING",
+        // Add address fields
+        address: validated.address || null,
+        houseNo: validated.houseNo || null,
+        street: validated.street || null,
+        locality: validated.locality || null,
+        city: validated.city || null,
+        state: validated.state || null,
+        pincode: validated.pincode || null,
       },
     });
 

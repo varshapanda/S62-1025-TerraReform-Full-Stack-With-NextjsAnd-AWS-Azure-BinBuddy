@@ -15,6 +15,14 @@ export const reportCreationSchema = z.object({
   note: z.string().max(500, "Note max 500 chars").optional(),
   lat: z.number().min(-90).max(90, "Invalid latitude"),
   lng: z.number().min(-180).max(180, "Invalid longitude"),
+
+  address: z.string().optional(),
+  houseNo: z.string().optional(),
+  street: z.string().optional(),
+  locality: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  pincode: z.string().optional(),
 });
 
 export type PresignUrlRequest = z.infer<typeof presignUrlRequestSchema>;

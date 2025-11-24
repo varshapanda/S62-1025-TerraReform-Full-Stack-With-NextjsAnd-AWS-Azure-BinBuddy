@@ -10,6 +10,14 @@ interface Report {
   note?: string;
   lat: number;
   lng: number;
+  // Address fields
+  address?: string;
+  houseNo?: string;
+  street?: string;
+  locality?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   createdAt: string;
   reporter: {
     name?: string;
@@ -92,7 +100,6 @@ export default function VerifyReportsPage() {
         setSelectedReport(null);
         setVerificationNote("");
         fetchPendingReports();
-        // Refresh dashboard stats
         router.refresh();
       } else {
         alert(result.message || "Verification failed");
@@ -107,6 +114,24 @@ export default function VerifyReportsPage() {
 
   const getImageUrl = (report: Report) => {
     return report.images?.[0]?.url || report.imageUrl;
+  };
+
+  // Format address for display
+  const getFormattedAddress = (report: Report) => {
+    if (report.address) {
+      return report.address;
+    }
+
+    const parts = [
+      report.houseNo,
+      report.street,
+      report.locality,
+      report.city,
+      report.state,
+      report.pincode,
+    ].filter(Boolean);
+
+    return parts.length > 0 ? parts.join(", ") : "Address not provided";
   };
 
   return (
@@ -165,11 +190,14 @@ export default function VerifyReportsPage() {
                         {report.reporter.name || report.reporter.email}
                       </p>
                       <p>
-                        Date: {new Date(report.createdAt).toLocaleDateString()}
+                        Date:{" "}
+                        {new Date(report.createdAt).toLocaleDateString("en-GB")}
                       </p>
-                      <p>
-                        Location: {report.lat.toFixed(4)},{" "}
-                        {report.lng.toFixed(4)}
+                      <p className="flex items-start gap-1">
+                        <span className="font-semibold">Location:</span>
+                        <span className="flex-1">
+                          {getFormattedAddress(report)}
+                        </span>
                       </p>
                     </div>
                     <button
@@ -213,14 +241,15 @@ export default function VerifyReportsPage() {
                     {selectedReport.reporter.name ||
                       selectedReport.reporter.email}
                   </p>
-                  <p>
-                    <strong className="text-white">Location:</strong>{" "}
-                    {selectedReport.lat.toFixed(4)},{" "}
-                    {selectedReport.lng.toFixed(4)}
+                  <p className="flex items-start gap-2">
+                    <strong className="text-white">Location:</strong>
+                    <span className="flex-1">
+                      {getFormattedAddress(selectedReport)}
+                    </span>
                   </p>
                   <p>
                     <strong className="text-white">Reported:</strong>{" "}
-                    {new Date(selectedReport.createdAt).toLocaleString()}
+                    {new Date(selectedReport.createdAt).toLocaleString("en-GB")}
                   </p>
                 </div>
               </div>
