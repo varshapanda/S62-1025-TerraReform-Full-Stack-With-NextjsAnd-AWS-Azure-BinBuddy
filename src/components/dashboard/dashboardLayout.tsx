@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Leaf, LogOut, User, Award, Menu, X } from "lucide-react";
+import Link from "next/link";
 
 interface UserData {
   id: number;
@@ -128,21 +129,23 @@ export default function DashboardLayout({
             </div>
 
             {/* User Info & Logout */}
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-slate-700/50 rounded-lg">
-                <Award className={`text-${color}-400`} size={20} />
-                <span className="text-white font-semibold">
-                  {user.points} pts
-                </span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition border border-red-500/30"
-              >
-                <LogOut size={18} />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
+            <Link
+              href="/dashboard/leaderboard"
+              className="hidden md:flex items-center gap-3 px-4 py-2 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-600 transition"
+            >
+              <Award className={`text-${color}-400`} size={20} />
+              <span className="text-white font-semibold">
+                {user.points} pts
+              </span>
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition border border-red-500/30"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </div>
       </header>

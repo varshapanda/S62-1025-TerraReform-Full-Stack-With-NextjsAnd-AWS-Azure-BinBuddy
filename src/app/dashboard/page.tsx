@@ -35,5 +35,5 @@ export default async function DashboardPage() {
   }
 
   // Redirect to role-specific dashboard
-  redirect(`/dashboard/${role}`);
+  // redirect(`/dashboard/${role}`);
 }

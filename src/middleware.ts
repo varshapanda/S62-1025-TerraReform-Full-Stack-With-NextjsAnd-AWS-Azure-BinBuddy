@@ -42,6 +42,9 @@ export function middleware(req: NextRequest) {
     "/api/auth/signup",
     "/api/auth/logout",
     "/api/auth/refresh",
+    "/api/leaderboard",
+    "/api/leaderboard/community",
+    "/api/leaderboard/user",
   ];
 
   // API routes that ALL authenticated users can access (no role check)
