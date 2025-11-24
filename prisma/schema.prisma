@@ -24,7 +24,6 @@ model User {
   refreshTokens RefreshToken[]
   reports       Report[]
   rewards       Reward[]
-  claimedTasks  Task[]
 
   @@index([email])
   @@index([points])
@@ -46,46 +45,41 @@ model RefreshToken {
 model Report {
   id              String       @id @default(cuid())
   imageUrl        String
-  location        String?
-  latitude        Float?
-  longitude       Float?
-  wasteType       String?
-  wasteCategory   String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  category        String
   imageHash       String?      @unique
+  category        String
+  note            String?
   lat             Float
   lng             Float
-  note            String?
+  
+  // Address fields
+  address         String?
+  houseNo         String?
+  street          String?
+  locality        String?
+  city            String?
+  state           String?
+  pincode         String?
+  
+  // Reporter info
   reporterId      String
-  rejectionReason String?
-  remarks         String?
+  reporter        User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  
+  // Verification
+  status          ReportStatus @default(PENDING)
   verifiedAt      DateTime?
   verifiedBy      String?
-  status          ReportStatus @default(PENDING)
+  rejectionReason String?
+  remarks         String?
+  
+  // Timestamps
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  // Relations
   images          Image[]
-  reporter        User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-  task            Task?
 
   @@index([reporterId])
   @@index([status])
-}
-
-model Task {
-  id          String    @id @default(cuid())
-  reportId    String    @unique
-  status      String    @default("available")
-  claimedBy   String?
-  claimedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  collector   User?     @relation(fields: [claimedBy], references: [id])
-  report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
-
-  @@index([status])
-  @@index([claimedBy])
 }
 
 model Reward {
