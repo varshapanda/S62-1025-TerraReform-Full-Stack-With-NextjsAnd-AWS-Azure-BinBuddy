@@ -12,6 +12,7 @@ const ROLE_PERMISSIONS: Record<string, RegExp[]> = {
     /^\/api\/tasks\/view/, // View tasks
     /^\/api\/uploads\/presign/, // Upload images
     /^\/api\/user\/profile/, // View own profile
+    /^\/api\/volunteer-request$/, // Create volunteer request
   ],
   volunteer: [
     /^\/api\/volunteer/,

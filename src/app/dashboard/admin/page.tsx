@@ -1,4 +1,8 @@
+// app/dashboard/admin/page.tsx
+
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
+import Link from "next/link";
+import { Users, FileText, CheckSquare, Heart } from "lucide-react";
 
 export const metadata = {
   title: "Admin Dashboard - BinBuddy",
@@ -16,7 +20,6 @@ export default function AdminDashboardPage() {
           <p className="text-slate-400">Manage the entire BinBuddy system</p>
         </div>
 
-        {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-slate-400 text-sm mb-2">Total Users</h3>
@@ -36,32 +39,56 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
           <h3 className="text-xl font-semibold text-white mb-4">
             Admin Actions
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="p-4 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-left transition">
-              <h4 className="text-purple-400 font-semibold mb-1">
-                👥 Manage Users
-              </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link
+              href="/dashboard/admin/users"
+              className="p-4 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-left transition"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <Users className="text-purple-400" size={24} />
+                <h4 className="text-purple-400 font-semibold">Manage Users</h4>
+              </div>
               <p className="text-slate-400 text-sm">
                 View and manage all users
               </p>
-            </button>
+            </Link>
+
+            <Link
+              href="/dashboard/admin/volunteer-requests"
+              className="p-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-left transition"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <Heart className="text-emerald-400" size={24} />
+                <h4 className="text-emerald-400 font-semibold">
+                  Volunteer Requests
+                </h4>
+              </div>
+              <p className="text-slate-400 text-sm">
+                Review volunteer applications
+              </p>
+            </Link>
+
             <button className="p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-left transition">
-              <h4 className="text-red-400 font-semibold mb-1">
-                📊 View Reports
-              </h4>
+              <div className="flex items-center gap-3 mb-2">
+                <FileText className="text-red-400" size={24} />
+                <h4 className="text-red-400 font-semibold">View Reports</h4>
+              </div>
               <p className="text-slate-400 text-sm">
                 Monitor all system reports
               </p>
             </button>
+
             <button className="p-4 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-left transition">
-              <h4 className="text-amber-400 font-semibold mb-1">
-                ⚙️ System Settings
-              </h4>
+              <div className="flex items-center gap-3 mb-2">
+                <CheckSquare className="text-amber-400" size={24} />
+                <h4 className="text-amber-400 font-semibold">
+                  System Settings
+                </h4>
+              </div>
               <p className="text-slate-400 text-sm">
                 Configure system parameters
               </p>
