@@ -1,80 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { User, Shield, AlertCircle, CheckCircle } from "lucide-react";
-
-// Define TypeScript interfaces
-interface UserType {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  points: number;
-  state?: string;
-  city?: string;
-  createdAt: string;
-}
-
-interface MessageType {
-  type: "success" | "error";
-  text: string;
-}
+import { useAdminStore } from "@/store/adminStore";
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<number | null>(null);
-  const [message, setMessage] = useState<MessageType | null>(null);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch("/api/admin/users");
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || data.data?.users || []);
-      } else {
-        showMessage("error", "Failed to fetch users");
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      showMessage("error", "Error loading users");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { users, loading, updating, message, fetchUsers, updateUserRole } =
+    useAdminStore();
 
   useEffect(() => {
     fetchUsers();
   }, []);
-
-  const updateUserRole = async (userId: number, newRole: string) => {
-    setUpdating(userId);
-    try {
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (response.ok) {
-        showMessage("success", "Role updated successfully");
-        fetchUsers(); // Refresh the list
-      } else {
-        const data = await response.json();
-        showMessage("error", data.message || "Failed to update role");
-      }
-    } catch (error) {
-      console.error("Error updating role:", error);
-      showMessage("error", "Error updating role");
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  const showMessage = (type: "success" | "error", text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
-  };
 
   const getRoleBadgeColor = (role: string) => {
     const colors: Record<string, string> = {

@@ -1,5 +1,3 @@
-// app/dashboard/admin/page.tsx
-
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import Link from "next/link";
 import { Users, FileText, CheckSquare, Heart } from "lucide-react";

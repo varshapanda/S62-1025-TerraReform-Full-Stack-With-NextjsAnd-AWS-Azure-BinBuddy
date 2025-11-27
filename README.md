@@ -1746,4 +1746,175 @@ Redirect authenticated users away from reset pages (recommended).
 7. Try reusing token (should fail)
 
 ---
+
+## Zustand State Management Architecture
+
+This explains the complete Zustand-based state management system implemented across the application, covering:
+
+- Authentication
+- Report Creation Workflow
+- User Dashboard State
+- Volunteer Verification Dashboard State
+- Admin Management Dashboard State
+
+Each store is fully modular, typed, and optimized for React + Next.js applications.
+
+---
+
+### Overview of Zustand Stores
+
+The project includes the following stores:
+
+### 1. `authStore`
+Manages all authentication-related state and user details.
+
+#### **Features**
+- Stores authenticated user data
+- Handles login, logout, and user role
+- Persists state using `zustand/middleware`  
+- Accessible across all role-based dashboards
+
+---
+
+### 2. `reportStore`
+Handles **waste reporting workflow**, including location detection, file uploads, map interactions, and form submission.
+
+#### **Key Features**
+- **Form State**
+  - category, note, GPS coordinates
+- **Address Management**
+  - houseNo, street, locality, city, state, pincode, fullAddress
+- **Geolocation**
+  - Auto-detection via browser GPS
+  - Reverse geocoding using OpenStreetMap Nominatim API
+- **Map Integration**
+  - Supports Leaflet.js
+  - Marker drag + map click updates coordinates in store
+- **File Upload**
+  - Validates images
+  - Generates image preview
+  - Uploads to S3 via presigned URL
+- **Report Submission**
+  - Compiles all data and sends to backend API
+- **Form Reset**
+  - Clears entire form after successful submission
+
+---
+
+### 3. `userStore`
+Used in **User Dashboard** to manage reports submitted by the user.
+
+#### **Features**
+- Fetches user-specific reports (`/api/reports/my-reports`)
+- Stores report list and statuses
+- Calculates statistics:
+  - total reports
+  - verified count
+  - pending count
+- Handles volunteer application modal state
+
+---
+
+### 4. `volunteerStore`
+Used by **Volunteer Dashboard** to verify reports submitted by users.
+
+#### **Features**
+- Fetches pending reports with pagination
+- Fetches history of verified/rejected reports
+- Stores volunteer statistics:
+  - pending reports
+  - verified today
+  - total verified
+- Verification logic:
+  - Accept or reject reports with optional notes
+- Handles UI selection state for currently-open report
+- Maintains filters (VERIFIED/REJECTED)
+
+---
+
+### 5. `adminStore`
+Used in **Admin Dashboard** to manage users and volunteer requests.
+
+#### **Features**
+- Fetches all users
+- Updates user roles (user → volunteer → admin)
+- Fetches volunteer requests with filters
+- Handles approval/rejection of volunteer requests
+- Stores global admin UI messages (success/error)
+- Tracks async operations (loading, updating, processingRequestId)
+
+---
+
+## Why Zustand?
+
+- Lightweight (less than 1kb)
+- Minimal boilerplate
+- Great TypeScript support
+- Works beautifully with React server/client components
+- No reducers, actions, or complex boilerplate like Redux
+
+---
+
+## Architecture Principles Applied
+
+### 1. **Modular Stores**
+Each store represents a module:
+- Auth
+- Report creation
+- User dashboard
+- Volunteer dashboard
+- Admin dashboard
+
+No store depends on another → completely decoupled.
+
+### 2. **Clear Typing**
+All state interfaces strictly typed:
+```
+interface ReportState { ... }
+interface UserState { ... }
+interface VolunteerState { ... }
+interface AdminState { ... }
+```
+
+This ensures predictable state updates.
+
+### 3. **Actions Grouped by Domain**
+Each store includes:
+
+- Simple Setters (`setLoading`, `setError`, etc.)
+- Complex asynchronous actions (`fetchReports`, `verifyReport`, `submitReport`)
+- Reset handlers to clear specific UI flows
+
+### 4. **Error-Safe Async Actions**
+All async actions include:
+- try/catch blocks
+- automated error handling
+- UI state reset on failure
+
+---
+
+### How This Helps the Application
+
+| Feature | Benefit |
+|--------|---------|
+| Fully typed state | Zero runtime errors |
+| Centralized business logic | Cleaner components |
+| Reusable across pages | No prop drilling |
+| Supports SSR/CSR | Works well with Next.js |
+| Safe async actions | No inconsistent UI states |
+
+---
+
+## Summary
+
+This Zustand architecture provides a **scalable, modular, and fully typed** state management system for the entire application. It supports everything from basic user login to complex workflows such as:
+
+- Waste report submission
+- Map interaction + geolocation
+- Volunteer verification pipelines
+- Admin role management
+- User analytics and statistics
+
+---
+
  

@@ -1,76 +1,28 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
-
-interface Report {
-  id: string;
-  imageUrl: string;
-  category: string;
-  note?: string;
-  lat: number;
-  lng: number;
-  // Address fields
-  address?: string;
-  houseNo?: string;
-  street?: string;
-  locality?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
-  createdAt: string;
-  reporter: {
-    name?: string;
-    email: string;
-  };
-  images: Array<{
-    url: string;
-  }>;
-}
-
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-}
+import { useVolunteerStore } from "@/store/volunteerStore";
 
 export default function VerifyReportsPage() {
   const router = useRouter();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    page: 1,
-    limit: 10,
-    total: 0,
-    pages: 0,
-  });
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [verificationNote, setVerificationNote] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
+  const {
+    pendingReports,
+    loading,
+    pendingPagination,
+    selectedReport,
+    verificationNote,
+    isVerifying,
+    fetchPendingReports,
+    setSelectedReport,
+    setVerificationNote,
+    verifyReport,
+    resetVerificationState,
+  } = useVolunteerStore();
 
   useEffect(() => {
     fetchPendingReports();
-  }, [pagination.page]);
-
-  const fetchPendingReports = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `/api/volunteer/reports/pending?page=${pagination.page}&limit=${pagination.limit}`
-      );
-      const result = await response.json();
-
-      if (result.success) {
-        setReports(result.data.reports);
-        setPagination(result.data.pagination);
-      }
-    } catch (error) {
-      console.error("Failed to fetch pending reports:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, []);
 
   const handleVerify = async (status: "VERIFIED" | "REJECTED") => {
     if (!selectedReport) return;
@@ -80,44 +32,22 @@ export default function VerifyReportsPage() {
       return;
     }
 
-    try {
-      setIsVerifying(true);
-      const response = await fetch("/api/volunteer/reports/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          reportId: selectedReport.id,
-          status,
-          verificationNote: verificationNote.trim() || undefined,
-        }),
-      });
+    const success = await verifyReport(
+      selectedReport.id,
+      status,
+      verificationNote
+    );
 
-      const result = await response.json();
-
-      if (result.success) {
-        setSelectedReport(null);
-        setVerificationNote("");
-        fetchPendingReports();
-        router.refresh();
-      } else {
-        alert(result.message || "Verification failed");
-      }
-    } catch (error) {
-      console.error("Verification error:", error);
+    if (!success) {
       alert("Verification failed");
-    } finally {
-      setIsVerifying(false);
     }
   };
 
-  const getImageUrl = (report: Report) => {
+  const getImageUrl = (report: (typeof pendingReports)[0]) => {
     return report.images?.[0]?.url || report.imageUrl;
   };
 
-  // Format address for display
-  const getFormattedAddress = (report: Report) => {
+  const getFormattedAddress = (report: (typeof pendingReports)[0]) => {
     if (report.address) {
       return report.address;
     }
@@ -132,6 +62,10 @@ export default function VerifyReportsPage() {
     ].filter(Boolean);
 
     return parts.length > 0 ? parts.join(", ") : "Address not provided";
+  };
+
+  const handlePageChange = (newPage: number) => {
+    fetchPendingReports(newPage);
   };
 
   return (
@@ -158,13 +92,13 @@ export default function VerifyReportsPage() {
           <div className="text-center py-8">
             <p className="text-slate-400">Loading reports...</p>
           </div>
-        ) : reports.length === 0 ? (
+        ) : pendingReports.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-slate-400">No pending reports to verify</p>
           </div>
         ) : (
           <div className="grid gap-4">
-            {reports.map((report) => (
+            {pendingReports.map((report) => (
               <div
                 key={report.id}
                 className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
@@ -268,10 +202,7 @@ export default function VerifyReportsPage() {
 
               <div className="flex gap-4 justify-end">
                 <button
-                  onClick={() => {
-                    setSelectedReport(null);
-                    setVerificationNote("");
-                  }}
+                  onClick={() => resetVerificationState()}
                   className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white transition"
                   disabled={isVerifying}
                 >
@@ -297,25 +228,21 @@ export default function VerifyReportsPage() {
         )}
 
         {/* Pagination */}
-        {pagination.pages > 1 && (
+        {pendingPagination.pages > 1 && (
           <div className="flex justify-center gap-2">
             <button
-              onClick={() =>
-                setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-              }
-              disabled={pagination.page === 1}
+              onClick={() => handlePageChange(pendingPagination.page - 1)}
+              disabled={pendingPagination.page === 1}
               className="px-3 py-1 bg-slate-700 disabled:opacity-50 rounded text-white"
             >
               Previous
             </button>
             <span className="px-3 py-1 text-slate-400">
-              Page {pagination.page} of {pagination.pages}
+              Page {pendingPagination.page} of {pendingPagination.pages}
             </span>
             <button
-              onClick={() =>
-                setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-              }
-              disabled={pagination.page === pagination.pages}
+              onClick={() => handlePageChange(pendingPagination.page + 1)}
+              disabled={pendingPagination.page === pendingPagination.pages}
               className="px-3 py-1 bg-slate-700 disabled:opacity-50 rounded text-white"
             >
               Next

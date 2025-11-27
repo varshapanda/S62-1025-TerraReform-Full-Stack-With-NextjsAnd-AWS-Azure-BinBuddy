@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import {
@@ -15,80 +15,26 @@ import {
   Calendar,
   MapPin,
 } from "lucide-react";
-
-interface Report {
-  id: string;
-  category: string;
-  status: string;
-  createdAt: string;
-}
+import { useUserStore } from "@/store/userStore";
 
 export default function UserDashboardPage() {
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showVolunteerModal, setShowVolunteerModal] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [volunteerLoading, setVolunteerLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    reports,
+    stats,
+    loading,
+    showVolunteerModal,
+    volunteerSubmitted,
+    volunteerLoading,
+    volunteerError,
+    fetchReports,
+    setShowVolunteerModal,
+    submitVolunteerRequest,
+    resetVolunteerState,
+  } = useUserStore();
 
   useEffect(() => {
     fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
-    try {
-      const res = await fetch("/api/reports/my-reports");
-      const data = await res.json();
-      if (data.success) {
-        setReports(data.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch reports:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const stats = {
-    total: reports.length,
-    verified: reports.filter((r) => r.status === "VERIFIED").length,
-    pending: reports.filter((r) => r.status === "PENDING").length,
-  };
-
-  const handleVolunteerSubmit = async () => {
-    setVolunteerLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/volunteer-request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit request");
-      }
-
-      setSubmitted(true);
-      setTimeout(() => {
-        setShowVolunteerModal(false);
-        setSubmitted(false);
-      }, 5000);
-    } catch (err) {
-      console.error("Error submitting volunteer request:", err);
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.";
-      setError(message);
-    } finally {
-      setVolunteerLoading(false);
-    }
-  };
+  }, [fetchReports]);
 
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
@@ -188,7 +134,7 @@ export default function UserDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link
             href="/dashboard/user/report"
-            className="group relative overflow-hidden bg-gradient-to-br from-emerald-00 to-emerald-900 rounded-2xl p-8 hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 hover:scale-[1.02]"
+            className="group relative overflow-hidden bg-gradient-to-br from-emerald-800 to-emerald-900 rounded-2xl p-8 hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 hover:scale-[1.02]"
           >
             <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-20 -mt-20"></div>
             <div className="relative">
@@ -209,7 +155,7 @@ export default function UserDashboardPage() {
             </div>
           </Link>
 
-          <div className="group relative overflow-hidden bg-gradient-to-br from-purple-00 to-purple-900 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 cursor-pointer">
+          <div className="group relative overflow-hidden bg-gradient-to-br from-purple-800 to-purple-900 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 cursor-pointer">
             <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-20 -mt-20"></div>
             <div className="relative">
               <div className="inline-flex p-3 bg-white/10 rounded-xl mb-4">
@@ -329,18 +275,14 @@ export default function UserDashboardPage() {
                 </p>
               </div>
               <button
-                onClick={() => {
-                  setShowVolunteerModal(false);
-                  setSubmitted(false);
-                  setError(null);
-                }}
+                onClick={() => setShowVolunteerModal(false)}
                 className="text-slate-400 hover:text-white transition p-2 rounded-lg hover:bg-slate-800"
               >
                 <X size={24} />
               </button>
             </div>
 
-            {!submitted ? (
+            {!volunteerSubmitted ? (
               <div className="p-8 space-y-8">
                 {/* Overview */}
                 <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6">
@@ -435,15 +377,15 @@ export default function UserDashboardPage() {
                   </ul>
                 </div>
 
-                {error && (
+                {volunteerError && (
                   <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-red-400 text-sm">{error}</p>
+                    <p className="text-red-400 text-sm">{volunteerError}</p>
                   </div>
                 )}
 
                 <button
-                  onClick={handleVolunteerSubmit}
+                  onClick={submitVolunteerRequest}
                   disabled={volunteerLoading}
                   className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -482,10 +424,7 @@ export default function UserDashboardPage() {
                   shortly via email.
                 </p>
                 <button
-                  onClick={() => {
-                    setShowVolunteerModal(false);
-                    setSubmitted(false);
-                  }}
+                  onClick={() => setShowVolunteerModal(false)}
                   className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors"
                 >
                   Close

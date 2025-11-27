@@ -1,78 +1,23 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
-
-interface Report {
-  id: string;
-  imageUrl: string;
-  category: string;
-  note?: string;
-  status: string;
-  verifiedAt?: string;
-  remarks?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  // Address fields
-  address?: string;
-  houseNo?: string;
-  street?: string;
-  locality?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
-  reporter: {
-    name?: string;
-    email: string;
-  };
-  images: Array<{
-    url: string;
-  }>;
-}
-
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-}
+import { useVolunteerStore } from "@/store/volunteerStore";
 
 export default function VerificationHistoryPage() {
   const router = useRouter();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<"VERIFIED" | "REJECTED">(
-    "VERIFIED"
-  );
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    page: 1,
-    limit: 10,
-    total: 0,
-    pages: 0,
-  });
+  const {
+    historyReports,
+    loading,
+    statusFilter,
+    historyPagination,
+    fetchHistoryReports,
+    setStatusFilter,
+  } = useVolunteerStore();
 
   useEffect(() => {
-    fetchHistory();
-  }, [pagination.page, statusFilter]);
-
-  const fetchHistory = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `/api/volunteer/history?status=${statusFilter}&page=${pagination.page}&limit=${pagination.limit}`
-      );
-      const result = await response.json();
-
-      if (result.success) {
-        setReports(result.data.reports);
-        setPagination(result.data.pagination);
-      }
-    } catch (error) {
-      console.error("Failed to fetch history:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchHistoryReports(statusFilter);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -85,16 +30,15 @@ export default function VerificationHistoryPage() {
     }
   };
 
-  const getVerificationNote = (report: Report) => {
+  const getVerificationNote = (report: (typeof historyReports)[0]) => {
     return report.remarks || report.rejectionReason;
   };
 
-  const getImageUrl = (report: Report) => {
+  const getImageUrl = (report: (typeof historyReports)[0]) => {
     return report.images?.[0]?.url || report.imageUrl;
   };
 
-  // Format address for display
-  const getFormattedAddress = (report: Report) => {
+  const getFormattedAddress = (report: (typeof historyReports)[0]) => {
     if (report.address) {
       return report.address;
     }
@@ -109,6 +53,10 @@ export default function VerificationHistoryPage() {
     ].filter(Boolean);
 
     return parts.length > 0 ? parts.join(", ") : "Address not provided";
+  };
+
+  const handlePageChange = (newPage: number) => {
+    fetchHistoryReports(statusFilter, newPage);
   };
 
   return (
@@ -159,13 +107,13 @@ export default function VerificationHistoryPage() {
           <div className="text-center py-8">
             <p className="text-slate-400">Loading history...</p>
           </div>
-        ) : reports.length === 0 ? (
+        ) : historyReports.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-slate-400">No verification history found</p>
           </div>
         ) : (
           <div className="grid gap-4">
-            {reports.map((report) => (
+            {historyReports.map((report) => (
               <div
                 key={report.id}
                 className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
@@ -184,7 +132,7 @@ export default function VerificationHistoryPage() {
                         {report.category}
                       </h3>
                       <span
-                        className={`px-3 py-1 rounded-full text-sm border ${getStatusColor(report.status)}`}
+                        className={`px-3 py-1 rounded-full text-sm border ${getStatusColor(report.status || "")}`}
                       >
                         {report.status}
                       </span>
@@ -232,25 +180,21 @@ export default function VerificationHistoryPage() {
         )}
 
         {/* Pagination */}
-        {pagination.pages > 1 && (
+        {historyPagination.pages > 1 && (
           <div className="flex justify-center gap-2">
             <button
-              onClick={() =>
-                setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-              }
-              disabled={pagination.page === 1}
+              onClick={() => handlePageChange(historyPagination.page - 1)}
+              disabled={historyPagination.page === 1}
               className="px-3 py-1 bg-slate-700 disabled:opacity-50 rounded text-white"
             >
               Previous
             </button>
             <span className="px-3 py-1 text-slate-400">
-              Page {pagination.page} of {pagination.pages}
+              Page {historyPagination.page} of {historyPagination.pages}
             </span>
             <button
-              onClick={() =>
-                setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-              }
-              disabled={pagination.page === pagination.pages}
+              onClick={() => handlePageChange(historyPagination.page + 1)}
+              disabled={historyPagination.page === historyPagination.pages}
               className="px-3 py-1 bg-slate-700 disabled:opacity-50 rounded text-white"
             >
               Next

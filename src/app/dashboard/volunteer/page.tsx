@@ -1,41 +1,16 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
-
-interface VolunteerStats {
-  pending: number;
-  verifiedToday: number;
-  totalVerified: number;
-}
+import { useVolunteerStore } from "@/store/volunteerStore";
 
 export default function VolunteerDashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState<VolunteerStats>({
-    pending: 0,
-    verifiedToday: 0,
-    totalVerified: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const { stats, loading, fetchStats } = useVolunteerStore();
 
   useEffect(() => {
     fetchStats();
   }, []);
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch("/api/volunteer/stats");
-      const result = await response.json();
-
-      if (result.success) {
-        setStats(result.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <DashboardLayout role="volunteer">

@@ -1,8 +1,6 @@
-// app/dashboard/admin/volunteer-requests/page.tsx
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import {
   CheckCircle,
@@ -12,89 +10,24 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-
-// Define proper types based on your schema
-type VolunteerRequest = {
-  id: number;
-  userId: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  requestedAt: string;
-  reviewedAt: string | null;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    createdAt: string;
-  };
-};
+import { useAdminStore } from "@/store/adminStore";
 
 type FilterType = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
 export default function VolunteerRequestsPage() {
-  const [requests, setRequests] = useState<VolunteerRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterType>("PENDING");
-  const [processingId, setProcessingId] = useState<number | null>(null);
+  const {
+    volunteerRequests,
+    loading,
+    filterStatus,
+    processingRequestId,
+    fetchVolunteerRequests,
+    handleVolunteerAction,
+    setFilterStatus,
+  } = useAdminStore();
 
   useEffect(() => {
-    fetchRequests();
-  }, [filter]);
-
-  const fetchRequests = async () => {
-    setLoading(true);
-    try {
-      const url =
-        filter === "ALL"
-          ? "/api/admin/volunteer-requests"
-          : `/api/admin/volunteer-requests?status=${filter}`;
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (response.ok) {
-        setRequests(data.data?.requests || data.requests || []);
-      }
-    } catch (error) {
-      console.error("Error fetching requests:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAction = async (
-    requestId: number,
-    action: "approve" | "reject"
-  ) => {
-    if (!confirm(`Are you sure you want to ${action} this request?`)) {
-      return;
-    }
-
-    setProcessingId(requestId);
-    try {
-      const response = await fetch(
-        `/api/admin/volunteer-requests/${requestId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ action }),
-        }
-      );
-
-      if (response.ok) {
-        fetchRequests();
-      } else {
-        const data = await response.json();
-        alert(data.error || "Failed to process request");
-      }
-    } catch (error) {
-      console.error("Error processing request:", error);
-      alert("Something went wrong");
-    } finally {
-      setProcessingId(null);
-    }
-  };
+    fetchVolunteerRequests();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -122,6 +55,16 @@ export default function VolunteerRequestsPage() {
       default:
         return null;
     }
+  };
+
+  const handleAction = async (
+    requestId: number,
+    action: "approve" | "reject"
+  ) => {
+    if (!confirm(`Are you sure you want to ${action} this request?`)) {
+      return;
+    }
+    await handleVolunteerAction(requestId, action);
   };
 
   return (
@@ -152,9 +95,9 @@ export default function VolunteerRequestsPage() {
             (tab) => (
               <button
                 key={tab}
-                onClick={() => setFilter(tab)}
+                onClick={() => setFilterStatus(tab)}
                 className={`px-4 py-2 rounded-lg font-medium transition ${
-                  filter === tab
+                  filterStatus === tab
                     ? "bg-emerald-500 text-white"
                     : "bg-slate-800 text-slate-300 hover:bg-slate-700"
                 }`}
@@ -169,15 +112,15 @@ export default function VolunteerRequestsPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-emerald-400" size={40} />
           </div>
-        ) : requests.length === 0 ? (
+        ) : volunteerRequests.length === 0 ? (
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
             <p className="text-slate-400">
-              No {filter.toLowerCase()} requests found.
+              No {filterStatus.toLowerCase()} requests found.
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {requests.map((request) => (
+            {volunteerRequests.map((request) => (
               <div
                 key={request.id}
                 className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
@@ -213,10 +156,10 @@ export default function VolunteerRequestsPage() {
                   <div className="flex gap-3 mt-4">
                     <button
                       onClick={() => handleAction(request.id, "approve")}
-                      disabled={processingId === request.id}
+                      disabled={processingRequestId === request.id}
                       className="flex-1 bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {processingId === request.id ? (
+                      {processingRequestId === request.id ? (
                         <Loader2 className="animate-spin" size={16} />
                       ) : (
                         <CheckCircle size={16} />
@@ -225,10 +168,10 @@ export default function VolunteerRequestsPage() {
                     </button>
                     <button
                       onClick={() => handleAction(request.id, "reject")}
-                      disabled={processingId === request.id}
+                      disabled={processingRequestId === request.id}
                       className="flex-1 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {processingId === request.id ? (
+                      {processingRequestId === request.id ? (
                         <Loader2 className="animate-spin" size={16} />
                       ) : (
                         <XCircle size={16} />

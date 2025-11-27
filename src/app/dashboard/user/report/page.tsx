@@ -1,8 +1,9 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import type L from "leaflet";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
+import { useReportStore } from "@/store/reportStore";
 import {
   MapPin,
   Navigation,
@@ -22,34 +23,34 @@ export default function ReportPage() {
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
 
-  const [formData, setFormData] = useState({
-    category: "WET",
-    note: "",
-    lat: 0,
-    lng: 0,
-  });
+  // Zustand store
+  const {
+    formData,
+    address,
+    file,
+    preview,
+    loading,
+    error,
+    success,
+    locationMode,
+    fetchingLocation,
+    fetchingAddress,
+    mapLoaded,
+    showMap,
+    setFormData,
+    setAddress,
+    setError,
+    setLocationMode,
+    setMapLoaded,
+    setShowMap,
+    reverseGeocode,
+    handleAutoDetect,
+    handleFileChange,
+    submitReport,
+    resetForm,
+  } = useReportStore();
 
-  const [address, setAddress] = useState({
-    houseNo: "",
-    street: "",
-    locality: "",
-    city: "",
-    state: "",
-    pincode: "",
-    fullAddress: "",
-  });
-
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [locationMode, setLocationMode] = useState<"map" | "manual">("map");
-  const [fetchingLocation, setFetchingLocation] = useState(false);
-  const [fetchingAddress, setFetchingAddress] = useState(false);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [showMap, setShowMap] = useState(false);
-
+  // Load Leaflet
   useEffect(() => {
     if (typeof window === "undefined" || mapLoaded) return;
 
@@ -68,15 +69,29 @@ export default function ReportPage() {
     };
 
     loadLeaflet();
-  }, [mapLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Initialize map
   useEffect(() => {
     if (showMap && mapLoaded && !mapRef.current) {
       setTimeout(() => {
         initMap();
       }, 50);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showMap, mapLoaded]);
+
+  // Redirect on success
+  useEffect(() => {
+    if (success) {
+      setTimeout(() => {
+        resetForm();
+        router.push("/dashboard/user");
+      }, 2000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [success]);
 
   const initMap = () => {
     const L = window.L as typeof import("leaflet");
@@ -105,22 +120,17 @@ export default function ReportPage() {
 
     marker.on("dragend", function () {
       const position = marker.getLatLng();
-      setFormData((prev) => ({
-        ...prev,
+      setFormData({
         lat: position.lat,
         lng: position.lng,
-      }));
+      });
       reverseGeocode(position.lat, position.lng);
     });
 
     map.on("click", function (e: L.LeafletMouseEvent) {
       const { lat, lng } = e.latlng;
       marker.setLatLng([lat, lng]);
-      setFormData((prev) => ({
-        ...prev,
-        lat,
-        lng,
-      }));
+      setFormData({ lat, lng });
       reverseGeocode(lat, lng);
     });
 
@@ -128,213 +138,16 @@ export default function ReportPage() {
     markerRef.current = marker;
   };
 
-  const reverseGeocode = async (lat: number, lng: number) => {
-    setFetchingAddress(true);
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
-        {
-          headers: {
-            "User-Agent": "WasteReportApp/1.0",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.address) {
-        const addr = data.address;
-        setAddress({
-          houseNo: addr.house_number || "",
-          street: addr.road || addr.street || "",
-          locality: addr.suburb || addr.neighbourhood || addr.quarter || "",
-          city: addr.city || addr.town || addr.village || "",
-          state: addr.state || "",
-          pincode: addr.postcode || "",
-          fullAddress: data.display_name || "",
-        });
-      }
-    } catch (err) {
-      console.error("Geocoding error:", err);
-      setError("Failed to fetch address. You can enter it manually.");
-    } finally {
-      setFetchingAddress(false);
-    }
-  };
-
-  const handleAutoDetect = () => {
-    if (!navigator.geolocation) {
-      setError("Geolocation not supported by your browser");
-      return;
-    }
-
-    setFetchingLocation(true);
-    setError("");
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        setFormData((prev) => ({
-          ...prev,
-          lat,
-          lng,
-        }));
-
-        if (mapRef.current && markerRef.current) {
-          mapRef.current.setView([lat, lng], 16);
-          markerRef.current.setLatLng([lat, lng]);
-        }
-
-        await reverseGeocode(lat, lng);
-        setFetchingLocation(false);
-      },
-
-      (error) => {
-        setError("Failed to get your location. Please enable location access.");
-        setFetchingLocation(false);
-        console.error("Geolocation error:", error);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-      }
-    );
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    if (!selectedFile.type.startsWith("image/")) {
-      setError("Only image files are allowed");
-      return;
+    if (selectedFile) {
+      handleFileChange(selectedFile);
     }
-
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      setError("File size must be less than 5MB");
-      return;
-    }
-
-    setFile(selectedFile);
-    setError("");
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(selectedFile);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitClick = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      if (!file) {
-        throw new Error("Please select a file");
-      }
-
-      if (formData.lat === 0 || formData.lng === 0) {
-        throw new Error("Please set location");
-      }
-
-      if (locationMode === "manual" && !address.city) {
-        throw new Error("Please enter address details");
-      }
-
-      const presignRes = await fetch("/api/uploads/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-        }),
-      });
-
-      if (!presignRes.ok) {
-        const errData = await presignRes.json();
-        throw new Error(errData.error || "Failed to get presigned URL");
-      }
-
-      const presignData = await presignRes.json();
-      const uploadUrl = presignData.data?.uploadUrl;
-
-      if (!uploadUrl) {
-        throw new Error("No upload URL in response");
-      }
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type,
-        },
-        body: file,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error(`File upload failed: ${uploadRes.status}`);
-      }
-
-      const presignedUrlObj = new URL(uploadUrl);
-      const s3Key = presignedUrlObj.pathname.substring(1);
-      const imageUrl = `${process.env.NEXT_PUBLIC_S3_URL}/${s3Key}`;
-
-      const fullAddressString =
-        locationMode === "manual"
-          ? [
-              address.houseNo,
-              address.street,
-              address.locality,
-              address.city,
-              address.state,
-              address.pincode,
-            ]
-              .filter(Boolean)
-              .join(", ")
-          : address.fullAddress;
-
-      const reportRes = await fetch("/api/reports/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageUrl,
-          category: formData.category,
-          note: formData.note || undefined,
-          lat: formData.lat,
-          lng: formData.lng,
-          address: fullAddressString || undefined,
-          houseNo: address.houseNo || undefined,
-          street: address.street || undefined,
-          locality: address.locality || undefined,
-          city: address.city || undefined,
-          state: address.state || undefined,
-          pincode: address.pincode || undefined,
-        }),
-      });
-
-      if (!reportRes.ok) {
-        const errData = await reportRes.json();
-        throw new Error(errData.error || "Report creation failed");
-      }
-
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard/user");
-      }, 2000);
-    } catch (err: unknown) {
-      console.error("Error:", err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
-    } finally {
-      setLoading(false);
-    }
+    await submitReport();
   };
 
   const isLocationSet = formData.lat !== 0 && formData.lng !== 0;
@@ -429,7 +242,7 @@ export default function ReportPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={handleFileChange}
+                onChange={handleFileInput}
                 className="hidden"
               />
             </div>
@@ -442,9 +255,7 @@ export default function ReportPage() {
               </label>
               <select
                 value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
+                onChange={(e) => setFormData({ category: e.target.value })}
                 className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-base font-medium transition-all"
               >
                 <option value="WET">Wet Waste (Organic, Food)</option>
@@ -462,9 +273,7 @@ export default function ReportPage() {
               </label>
               <textarea
                 value={formData.note}
-                onChange={(e) =>
-                  setFormData({ ...formData, note: e.target.value })
-                }
+                onChange={(e) => setFormData({ note: e.target.value })}
                 placeholder="Describe the waste condition, quantity, or any other relevant information..."
                 maxLength={500}
                 className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none transition-all"
@@ -496,7 +305,7 @@ export default function ReportPage() {
                   onClick={() => {
                     setLocationMode("map");
                     if (!showMap && formData.lat === 0) {
-                      handleAutoDetect();
+                      handleAutoDetect(mapRef, markerRef);
                     }
                   }}
                   className={`p-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-semibold ${
@@ -526,7 +335,7 @@ export default function ReportPage() {
                 <div className="space-y-4">
                   <button
                     onClick={() => {
-                      handleAutoDetect();
+                      handleAutoDetect(mapRef, markerRef);
                       setShowMap(true);
                     }}
                     disabled={fetchingLocation}
@@ -585,18 +394,14 @@ export default function ReportPage() {
                       type="text"
                       placeholder="House/Flat No"
                       value={address.houseNo}
-                      onChange={(e) =>
-                        setAddress({ ...address, houseNo: e.target.value })
-                      }
+                      onChange={(e) => setAddress({ houseNo: e.target.value })}
                       className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                     <input
                       type="text"
                       placeholder="Street/Road"
                       value={address.street}
-                      onChange={(e) =>
-                        setAddress({ ...address, street: e.target.value })
-                      }
+                      onChange={(e) => setAddress({ street: e.target.value })}
                       className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                   </div>
@@ -604,9 +409,7 @@ export default function ReportPage() {
                     type="text"
                     placeholder="Locality/Area *"
                     value={address.locality}
-                    onChange={(e) =>
-                      setAddress({ ...address, locality: e.target.value })
-                    }
+                    onChange={(e) => setAddress({ locality: e.target.value })}
                     className="w-full p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   />
                   <div className="grid grid-cols-2 gap-3">
@@ -614,18 +417,14 @@ export default function ReportPage() {
                       type="text"
                       placeholder="City *"
                       value={address.city}
-                      onChange={(e) =>
-                        setAddress({ ...address, city: e.target.value })
-                      }
+                      onChange={(e) => setAddress({ city: e.target.value })}
                       className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                     <input
                       type="text"
                       placeholder="State *"
                       value={address.state}
-                      onChange={(e) =>
-                        setAddress({ ...address, state: e.target.value })
-                      }
+                      onChange={(e) => setAddress({ state: e.target.value })}
                       className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                   </div>
@@ -633,13 +432,11 @@ export default function ReportPage() {
                     type="text"
                     placeholder="Pincode"
                     value={address.pincode}
-                    onChange={(e) =>
-                      setAddress({ ...address, pincode: e.target.value })
-                    }
+                    onChange={(e) => setAddress({ pincode: e.target.value })}
                     className="w-full p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   />
                   <button
-                    onClick={handleAutoDetect}
+                    onClick={() => handleAutoDetect(mapRef, markerRef)}
                     disabled={fetchingLocation}
                     className="w-full p-3 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50"
                   >
@@ -714,7 +511,7 @@ export default function ReportPage() {
 
         {/* Submit Button */}
         <button
-          onClick={handleSubmit}
+          onClick={handleSubmitClick}
           disabled={loading || !file || !isLocationSet || !isAddressComplete}
           className="w-full p-6 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-bold text-xl rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-emerald-500/30 disabled:shadow-none hover:scale-[1.02] disabled:scale-100"
         >
