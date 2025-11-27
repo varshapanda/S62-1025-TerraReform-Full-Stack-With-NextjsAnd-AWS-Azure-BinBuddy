@@ -17,6 +17,8 @@ model User {
   emailVerified           Boolean           @default(false)
   verificationToken       String?           @unique
   verificationTokenExpiry DateTime?
+  passwordResetToken      String?           @unique
+  passwordResetExpiry     DateTime?
   volunteerRequest        VolunteerRequest?
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt

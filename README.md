@@ -1617,7 +1617,133 @@ SENDGRID_SENDER="noreply@yourdomain.com"
 
 ---
 
+## Forgot Password & Reset Password Feature 
 
+### Overview
+This provides complete documentation for the **Forgot Password** feature implemented in BinBuddy.  
+It includes user flow, API details, Prisma changes, email templates, middleware updates, and security considerations.
 
+---
 
+## Feature Summary
+The Forgot Password system allows users to:
+
+- Request a password reset via email
+- Receive a secure link with token
+- Reset their password through a verified route
+- Use a fully secure, production-ready flow
+
+---
+
+## User Flow
+
+1. User clicks **“Forgot password?”** on login page.
+2. User enters email on `/forgot-password`.
+3. System generates reset token + 1-hour expiry.
+4. User receives email with secure reset link.
+5. User opens `/reset-password?token=...`
+6. User sets new password (with validation).
+7. System verifies token → updates password → clears token.
+8. User logs in using new credentials.
+
+---
+
+### Pages Included
+
+#### **1. `/forgot-password`**
+- Email field with validation  
+- Success message (uniform to prevent email enumeration)
+
+#### **2. `/reset-password`**
+- Takes `token` from URL  
+- New password + confirm password fields  
+- Real-time validation  
+
+---
+
+### API Endpoints
+
+#### **POST `/api/auth/forgot-password`**
+Handles:
+- Email validation
+- Token generation (`32-byte random hex`)
+- Token expiry (1 hour)
+- Updating DB with token fields
+- Sending password reset email
+- Uniform response for all users
+
+---
+
+#### **POST `/api/auth/reset-password`**
+Handles:
+- Token + expiry validation
+- Password hashing (bcrypt)
+- Updating user password
+- Clearing reset token and expiry
+- (Optional) Invalidating sessions
+
+---
+### Prisma Schema Update
+Add these fields to the `User` model:
+
+```prisma
+passwordResetToken      String?   @unique
+passwordResetExpiry     DateTime?
+```
+
+Run migration:
+
+```bash
+npx prisma migrate dev --name add_password_reset_fields
+```
+
+---
+
+### Email Template
+
+A new email template:
+
+- Styled to match existing system  
+- Includes reset link  
+- Includes expiry warning  
+
+Used through your existing SendGrid-powered sender.
+
+---
+
+### Security Features
+
+- **Cryptographically secure tokens**
+- **One-hour expiry**
+- **Single-use reset links**
+- **Hashed passwords only (bcrypt)**
+- **Email enumeration protection**
+- **Token invalidation after reset**
+
+---
+
+## Middleware Updates
+
+Mark these routes as **public**:
+
+- `/forgot-password`
+- `/reset-password`
+- `/api/auth/forgot-password`
+- `/api/auth/reset-password`
+
+Redirect authenticated users away from reset pages (recommended).
+
+---
+
+## How to Test
+
+1. Navigate to `/forgot-password`
+2. Enter your email
+3. Check console logs in development (reset URL is printed)
+4. Open reset link
+5. Enter new password + confirmation
+6. Verify success redirect
+7. Try reusing token (should fail)
+
+---
  
