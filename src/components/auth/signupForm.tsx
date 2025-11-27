@@ -13,9 +13,15 @@ import {
   EyeOff,
 } from "lucide-react";
 import { indianStates, getCitiesByState } from "@/lib/location";
+import { useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
 
 export default function SignupForm() {
   const router = useRouter();
+  const setUser = useAuthStore((state) => state.setUser);
+  const getDashboardRoute = useAuthStore((state) => state.getDashboardRoute);
+  const addNotification = useUIStore((state) => state.addNotification);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -86,7 +92,14 @@ export default function SignupForm() {
         return;
       }
 
-      router.push("/dashboard");
+      // Show success notification
+      addNotification(
+        "Account created! Please check your email to verify your account.",
+        "success"
+      );
+
+      // Redirect to login page with success message
+      router.push("/login?message=signup_success");
     } catch (err) {
       setError("An error occurred. Please try again.");
       console.error(err);

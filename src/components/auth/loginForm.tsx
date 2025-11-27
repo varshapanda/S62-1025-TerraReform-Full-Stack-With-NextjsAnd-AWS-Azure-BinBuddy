@@ -12,10 +12,16 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
 
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const setUser = useAuthStore((state) => state.setUser);
+  const getDashboardRoute = useAuthStore((state) => state.getDashboardRoute);
+  const addNotification = useUIStore((state) => state.addNotification);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -25,7 +31,7 @@ export default function LoginForm() {
     password: "",
   });
 
-  // Check for URL parameters (verification success, password reset, errors, etc.)
+  // Check for URL parameters
   useEffect(() => {
     const message = searchParams.get("message");
     const urlError = searchParams.get("error");
@@ -81,7 +87,6 @@ export default function LoginForm() {
       console.log("Login response:", data);
 
       if (!response.ok) {
-        // Handle specific error for unverified email
         if (response.status === 403) {
           setError(
             "Please verify your email before logging in. Check your inbox for the verification link."
@@ -92,8 +97,23 @@ export default function LoginForm() {
         return;
       }
 
+      // Store user data in Zustand
+      setUser({
+        id: data.data.user.id,
+        name: data.data.user.name,
+        email: data.data.user.email,
+        role: data.data.user.role,
+        points: data.data.user.points,
+        emailVerified: true,
+      });
+
+      addNotification(`Welcome back, ${data.data.user.name}!`, "success");
+
       console.log("Login successful, redirecting to dashboard...");
-      router.push("/dashboard");
+
+      // Redirect to role-based dashboard
+      const dashboardPath = getDashboardRoute();
+      router.push(dashboardPath);
     } catch (err) {
       console.error("Login error:", err);
       setError("An error occurred. Please try again.");
@@ -196,7 +216,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-gradient-to-r from-emerald-500 to-green-500 py-3 rounded-lg font-semibold text-white hover:shadow-lg hover:shadow-emerald-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-linear-to-r from-emerald-500 to-green-500 py-3 rounded-lg font-semibold text-white hover:shadow-lg hover:shadow-emerald-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {loading ? (
           <>
