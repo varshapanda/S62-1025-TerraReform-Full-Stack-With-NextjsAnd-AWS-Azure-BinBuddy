@@ -4,21 +4,21 @@ import jwt from "jsonwebtoken";
 const JWT_SECRET = process.env.JWT_SECRET;
 
 interface DecodedToken {
-  id: number;
+  id: string;
   email: string;
   role: string;
-  type: "access" | "refresh"; // Token type identification
+  type: "access" | "refresh";
   iat?: number;
-  exp?: number; // Expiration for detailed error handling
+  exp?: number;
 }
 
 export function verifyToken(req: NextRequest): {
   success: boolean;
   user?: DecodedToken;
   error?: string;
-  errorType?: "expired" | "invalid" | "missing"; //Error type differentiation
+  errorType?: "expired" | "invalid" | "missing";
 } {
-  // Try accessToken first (was "token")
+  // Try accessToken first
   let token = req.cookies.get("accessToken")?.value;
 
   if (!token) {
@@ -41,7 +41,7 @@ export function verifyToken(req: NextRequest): {
 
     const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
 
-    //Verify this is an access token, not refresh token
+    // Verify this is an access token
     if (decoded.type !== "access") {
       return {
         success: false,
@@ -52,7 +52,6 @@ export function verifyToken(req: NextRequest): {
 
     return { success: true, user: decoded };
   } catch (error) {
-    // Differentiate between expired and invalid tokens
     if (error instanceof jwt.TokenExpiredError) {
       console.error("Access token expired:", error.message);
       return {

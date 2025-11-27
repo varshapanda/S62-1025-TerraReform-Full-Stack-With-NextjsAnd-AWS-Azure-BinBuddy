@@ -1,19 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+
+  // Check for URL parameters (verification success, errors, etc.)
+  useEffect(() => {
+    const message = searchParams.get("message");
+    const urlError = searchParams.get("error");
+
+    if (message === "verification_success") {
+      setSuccessMessage("Email verified successfully! You can now log in.");
+    } else if (message === "already_verified") {
+      setSuccessMessage("Your email is already verified. Please log in.");
+    } else if (urlError === "invalid_token") {
+      setError(
+        "Invalid verification link. The token was not found in our system."
+      );
+    } else if (urlError === "expired_token") {
+      setError(
+        "Your verification link has expired. Please sign up again or contact support."
+      );
+    } else if (urlError === "missing_token") {
+      setError("Verification link is invalid or incomplete.");
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -23,6 +55,7 @@ export default function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
     setLoading(true);
 
     if (!formData.email || !formData.password) {
@@ -32,6 +65,8 @@ export default function LoginForm() {
     }
 
     try {
+      console.log("Attempting login...");
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -39,16 +74,25 @@ export default function LoginForm() {
       });
 
       const data = await response.json();
+      console.log("Login response:", data);
 
       if (!response.ok) {
-        setError(data.message || "Login failed");
+        // Handle specific error for unverified email
+        if (response.status === 403) {
+          setError(
+            "Please verify your email before logging in. Check your inbox for the verification link."
+          );
+        } else {
+          setError(data.message || "Login failed");
+        }
         return;
       }
 
+      console.log("Login successful, redirecting to dashboard...");
       router.push("/dashboard");
     } catch (err) {
+      console.error("Login error:", err);
       setError("An error occurred. Please try again.");
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -56,6 +100,22 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-start gap-3">
+          <CheckCircle className="text-emerald-400 mt-0.5" size={18} />
+          <p className="text-emerald-300 text-sm">{successMessage}</p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+          <AlertCircle className="text-red-400 mt-0.5" size={18} />
+          <p className="text-red-300 text-sm">{error}</p>
+        </div>
+      )}
+
       {/* Email Field */}
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -74,6 +134,7 @@ export default function LoginForm() {
             placeholder="you@example.com"
             className="w-full pl-12 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition"
             disabled={loading}
+            required
           />
         </div>
       </div>
@@ -96,6 +157,7 @@ export default function LoginForm() {
             placeholder="Enter your password"
             className="w-full pl-12 pr-12 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition"
             disabled={loading}
+            required
           />
           <button
             type="button"
@@ -126,21 +188,23 @@ export default function LoginForm() {
         </Link>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">
-          {error}
-        </div>
-      )}
-
       {/* Submit Button */}
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-linear-to-r from-emerald-500 to-green-500 py-3 rounded-lg font-semibold text-white hover:shadow-lg hover:shadow-emerald-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-gradient-to-r from-emerald-500 to-green-500 py-3 rounded-lg font-semibold text-white hover:shadow-lg hover:shadow-emerald-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        {loading ? "Logging in..." : "Login"}
-        {!loading && <ArrowRight size={18} />}
+        {loading ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            Logging in...
+          </>
+        ) : (
+          <>
+            Login
+            <ArrowRight size={18} />
+          </>
+        )}
       </button>
 
       {/* Signup Link */}

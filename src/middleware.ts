@@ -43,6 +43,7 @@ export function middleware(req: NextRequest) {
     "/api/auth/signup",
     "/api/auth/logout",
     "/api/auth/refresh",
+    "/api/auth/verify-email", // ADDED: Email verification should be public
     "/api/leaderboard",
     "/api/leaderboard/community",
     "/api/leaderboard/user",
@@ -92,12 +93,14 @@ export function middleware(req: NextRequest) {
   if (pathname.startsWith("/api/")) {
     // Allow public API routes
     if (publicApiPaths.includes(pathname)) {
+      console.log(`Public API route accessed: ${pathname}`);
       return NextResponse.next();
     }
 
     // Require authentication for all other API routes
     if (!success || !user) {
       const { error, errorType } = verifyToken(req);
+      console.log(`Unauthorized API access attempt: ${pathname}`);
       return sendError(
         error || "Unauthorized access. Please log in.",
         ERROR_CODES.AUTH_ERROR,

@@ -320,6 +320,12 @@ export default function LandingPage() {
             >
               Create Your Account
             </Link>
+            <Link
+              href="/login"
+              className="bg-linear-to-r from-emerald-500 to-green-500 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-2xl hover:shadow-emerald-500/50 transition transform hover:scale-105 inline-flex items-center justify-center"
+            >
+              Login
+            </Link>
           </div>
         </div>
       </section>

@@ -274,3 +274,225 @@ export const reportVerifiedTemplate = (
 </body>
 </html>
 `;
+
+// Add this to lib/email-template.ts
+
+export const emailVerificationTemplate = (
+  userName: string,
+  verificationUrl: string
+) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6; 
+      color: #1e293b; 
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 40px auto; 
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .header { 
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: white; 
+      padding: 50px 30px; 
+      text-align: center;
+      position: relative;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></svg>');
+      opacity: 0.1;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 32px;
+      font-weight: 700;
+      position: relative;
+      z-index: 1;
+    }
+    .emoji {
+      font-size: 64px;
+      display: block;
+      margin-bottom: 20px;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    .content { 
+      padding: 50px 40px; 
+      background: white;
+    }
+    .content h2 {
+      color: #059669;
+      margin-top: 0;
+      font-weight: 700;
+      font-size: 28px;
+    }
+    .content p {
+      color: #475569;
+      font-size: 16px;
+      line-height: 1.8;
+    }
+    .verify-box {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 2px solid #86efac;
+      border-radius: 12px;
+      padding: 30px;
+      margin: 30px 0;
+      text-align: center;
+    }
+    .verify-box p {
+      margin: 0 0 20px 0;
+      color: #166534;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .button {
+      display: inline-block;
+      padding: 16px 40px;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: white !important;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+    }
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(5, 150, 105, 0.6);
+    }
+    .info-box {
+      background: #f8fafc;
+      border-left: 4px solid #94a3b8;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 8px;
+    }
+    .info-box p {
+      margin: 0;
+      color: #475569;
+      font-size: 14px;
+    }
+    .footer { 
+      text-align: center; 
+      padding: 40px 30px; 
+      font-size: 13px; 
+      color: #94a3b8; 
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+    }
+    .footer a {
+      color: #059669;
+      text-decoration: none;
+    }
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+      margin: 30px 0;
+    }
+    .security-note {
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .security-note p {
+      margin: 0;
+      color: #92400e;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="emoji">✉️</span>
+      <h1>Verify Your Email</h1>
+    </div>
+    
+    <div class="content">
+      <h2>Hello ${userName}! 👋</h2>
+      <p>
+        Thank you for signing up for <strong>BinBuddy</strong>! We're excited to have you join our 
+        community of environmental champions making waste management smarter and more sustainable.
+      </p>
+      
+      <div class="verify-box">
+        <p>Click the button below to verify your email and activate your account:</p>
+        <a href="${verificationUrl}" class="button">
+          ✓ Verify My Email
+        </a>
+      </div>
+
+      <div class="divider"></div>
+
+      <p style="font-size: 15px; color: #64748b;">
+        <strong>What happens after verification?</strong>
+      </p>
+      <ul style="color: #475569; padding-left: 20px;">
+        <li>Full access to your personalized dashboard</li>
+        <li>Start reporting waste and earning points</li>
+        <li>Join community leaderboards</li>
+        <li>Unlock achievement badges</li>
+      </ul>
+
+      <div class="security-note">
+        <p>
+          <strong>⏰ This link expires in 24 hours</strong><br>
+          For security reasons, this verification link will only be valid for 24 hours.
+        </p>
+      </div>
+
+      <div class="info-box">
+        <p>
+          <strong>Didn't create an account?</strong><br>
+          If you didn't sign up for BinBuddy, you can safely ignore this email. 
+          No account will be created without verification.
+        </p>
+      </div>
+
+      <div class="divider"></div>
+
+      <p style="font-size: 14px; color: #94a3b8;">
+        If the button doesn't work, copy and paste this link into your browser:<br>
+        <a href="${verificationUrl}" style="color: #059669; word-break: break-all;">${verificationUrl}</a>
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p style="margin: 0 0 10px 0;">
+        <strong style="color: #059669;">BinBuddy</strong> - Smart Waste Segregation & Management
+      </p>
+      <p style="margin: 0; color: #cbd5e1;">
+        Need help? Contact us at <a href="mailto:support@binbuddy.com">support@binbuddy.com</a>
+      </p>
+      <p style="margin: 15px 0 0 0; color: #cbd5e1;">
+        &copy; 2025 BinBuddy. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+`;

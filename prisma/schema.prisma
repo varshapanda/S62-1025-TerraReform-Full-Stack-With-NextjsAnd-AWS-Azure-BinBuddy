@@ -8,23 +8,27 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  name          String
-  email         String         @unique
-  password      String?
-  googleId      String?        @unique
-  points        Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  role          Role           @default(user)
-  city          String?
-  state         String?
-  images        Image[]
-  notifications Notification[]
-  refreshTokens RefreshToken[]
-  reports       Report[]
-  rewards       Reward[]
-  volunteerRequest  VolunteerRequest?
+  id                      String            @id @default(cuid())
+  name                    String
+  email                   String            @unique
+  password                String?
+  googleId                String?           @unique
+  points                  Int               @default(0)
+  emailVerified           Boolean           @default(false)
+  verificationToken       String?           @unique
+  verificationTokenExpiry DateTime?
+  volunteerRequest        VolunteerRequest?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  role                    Role              @default(user)
+  city                    String?
+  state                   String?
+  images                  Image[]
+  notifications           Notification[]
+  refreshTokens           RefreshToken[]
+  reports                 Report[]
+  rewards                 Reward[]
+
   @@index([email])
   @@index([points])
 }
@@ -43,40 +47,40 @@ model RefreshToken {
 }
 
 model Report {
-  id              String       @id @default(cuid())
-  imageUrl        String
-  imageHash       String?      @unique
-  category        String
-  note            String?
-  lat             Float
-  lng             Float
-  
+  id        String  @id @default(cuid())
+  imageUrl  String
+  imageHash String? @unique
+  category  String
+  note      String?
+  lat       Float
+  lng       Float
+
   // Address fields
-  address         String?
-  houseNo         String?
-  street          String?
-  locality        String?
-  city            String?
-  state           String?
-  pincode         String?
-  
+  address  String?
+  houseNo  String?
+  street   String?
+  locality String?
+  city     String?
+  state    String?
+  pincode  String?
+
   // Reporter info
-  reporterId      String
-  reporter        User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-  
+  reporterId String
+  reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
   // Verification
   status          ReportStatus @default(PENDING)
   verifiedAt      DateTime?
   verifiedBy      String?
   rejectionReason String?
   remarks         String?
-  
+
   // Timestamps
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  images          Image[]
+  images Image[]
 
   @@index([reporterId])
   @@index([status])
@@ -107,20 +111,22 @@ model Notification {
   @@index([userId])
   @@index([read])
 }
+
 model VolunteerRequest {
-  id          Int                      @id @default(autoincrement())
-  userId      String                      @unique
-  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status      VolunteerRequestStatus   @default(PENDING)
-  requestedAt DateTime                 @default(now())
+  id          Int                    @id @default(autoincrement())
+  userId      String                 @unique
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      VolunteerRequestStatus @default(PENDING)
+  requestedAt DateTime               @default(now())
   reviewedAt  DateTime?
   reviewedBy  String?
   reviewNotes String?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-  
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
   @@map("volunteer_requests")
 }
+
 model Image {
   id         String   @id @default(cuid())
   url        String
@@ -147,6 +153,7 @@ enum ReportStatus {
   VERIFIED
   REJECTED
 }
+
 enum VolunteerRequestStatus {
   PENDING
   APPROVED

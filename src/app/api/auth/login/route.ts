@@ -1,4 +1,4 @@
-// import { NextResponse } from "next/server";
+// app/api/auth/login/route.ts
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
@@ -48,6 +48,16 @@ export async function POST(req: Request) {
     if (!isPasswordValid) {
       return sendError("Invalid credentials", ERROR_CODES.AUTH_ERROR, 401);
     }
+
+    // CHECK IF EMAIL IS VERIFIED
+    if (!user.emailVerified) {
+      return sendError(
+        "Please verify your email before logging in. Check your inbox for the verification link.",
+        ERROR_CODES.AUTH_ERROR,
+        403
+      );
+    }
+
     console.log("Fetched user role from DB:", user.role);
 
     // Access token (15 minutes)
