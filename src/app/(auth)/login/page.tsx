@@ -1,4 +1,3 @@
-import { Leaf } from "lucide-react";
 import Link from "next/link";
 import LoginForm from "@/components/auth/loginForm";
 
@@ -18,7 +17,6 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Leaf className="text-emerald-400" size={32} />
             <h1 className="text-3xl font-bold bg-linear-to-r from-emerald-400 to-green-500 bg-clip-text text-transparent">
               BinBuddy
             </h1>

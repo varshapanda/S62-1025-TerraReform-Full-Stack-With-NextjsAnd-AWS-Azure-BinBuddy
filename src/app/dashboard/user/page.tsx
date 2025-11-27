@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
-import { CheckCircle, X, Shield, Clock, Users } from "lucide-react";
+import {
+  CheckCircle,
+  X,
+  Shield,
+  Clock,
+  Users,
+  FileText,
+  TrendingUp,
+  AlertCircle,
+  Calendar,
+  MapPin,
+} from "lucide-react";
 
 interface Report {
   id: string;
@@ -44,9 +55,6 @@ export default function UserDashboardPage() {
     pending: reports.filter((r) => r.status === "PENDING").length,
   };
 
-  /**
-   * Handles volunteer request submission
-   */
   const handleVolunteerSubmit = async () => {
     setVolunteerLoading(true);
     setError(null);
@@ -66,7 +74,6 @@ export default function UserDashboardPage() {
       }
 
       setSubmitted(true);
-      // Auto-close after 5 seconds
       setTimeout(() => {
         setShowVolunteerModal(false);
         setSubmitted(false);
@@ -83,41 +90,97 @@ export default function UserDashboardPage() {
     }
   };
 
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: string } = {
+      WET: "emerald",
+      DRY: "blue",
+      MIXED: "amber",
+      HAZARDOUS: "red",
+      OTHER: "slate",
+    };
+    return colors[category] || "slate";
+  };
+
   return (
     <DashboardLayout role="user">
-      <div className="space-y-6">
-        {/* Volunteer Button at Top */}
-        <div className="flex justify-end">
+      <div className="space-y-8">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Dashboard Overview
+            </h1>
+            <p className="text-slate-400 text-lg">
+              Track your environmental impact and contributions
+            </p>
+          </div>
           <button
             onClick={() => setShowVolunteerModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-lg font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/25"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-700 to-emerald-900 hover:from-emerald-700 hover:to-emerald-600 text-white rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105"
           >
-            Become a Volunteer
+            <Users className="w-5 h-5" />
+            <span>Join as Volunteer</span>
           </button>
         </div>
 
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-2">User Dashboard</h2>
-          <p className="text-slate-400">
-            Report waste and track your contributions
-          </p>
-        </div>
-
-        {/* Quick Stats */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-            <h3 className="text-slate-400 text-sm mb-2">Total Reports</h3>
-            <p className="text-3xl font-bold text-white">{stats.total}</p>
+          <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600 transition-all duration-300 group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-colors"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-blue-500/10 rounded-xl">
+                  <FileText className="w-6 h-6 text-blue-400" />
+                </div>
+                <span className="text-sm font-medium text-slate-400">
+                  All Time
+                </span>
+              </div>
+              <h3 className="text-slate-400 text-sm font-medium mb-1">
+                Total Reports
+              </h3>
+              <p className="text-4xl font-bold text-white">{stats.total}</p>
+            </div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-            <h3 className="text-slate-400 text-sm mb-2">Verified Reports</h3>
-            <p className="text-3xl font-bold text-emerald-400">
-              {stats.verified}
-            </p>
+
+          <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 hover:border-emerald-600/50 transition-all duration-300 group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-emerald-500/10 transition-colors"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-emerald-500/10 rounded-xl">
+                  <CheckCircle className="w-6 h-6 text-emerald-400" />
+                </div>
+                <span className="text-sm font-medium text-emerald-400">
+                  +
+                  {stats.verified > 0
+                    ? Math.round((stats.verified / stats.total) * 100)
+                    : 0}
+                  %
+                </span>
+              </div>
+              <h3 className="text-slate-400 text-sm font-medium mb-1">
+                Verified Reports
+              </h3>
+              <p className="text-4xl font-bold text-white">{stats.verified}</p>
+            </div>
           </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-            <h3 className="text-slate-400 text-sm mb-2">Pending Reports</h3>
-            <p className="text-3xl font-bold text-amber-400">{stats.pending}</p>
+
+          <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 hover:border-amber-600/50 transition-all duration-300 group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-amber-500/10 transition-colors"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-amber-500/10 rounded-xl">
+                  <Clock className="w-6 h-6 text-amber-400" />
+                </div>
+                <span className="text-sm font-medium text-slate-400">
+                  In Review
+                </span>
+              </div>
+              <h3 className="text-slate-400 text-sm font-medium mb-1">
+                Pending Reports
+              </h3>
+              <p className="text-4xl font-bold text-white">{stats.pending}</p>
+            </div>
           </div>
         </div>
 
@@ -125,282 +188,308 @@ export default function UserDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link
             href="/dashboard/user/report"
-            className="p-6 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-left transition group"
+            className="group relative overflow-hidden bg-gradient-to-br from-emerald-00 to-emerald-900 rounded-2xl p-8 hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 hover:scale-[1.02]"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                <span className="text-emerald-400 text-lg">📸</span>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-20 -mt-20"></div>
+            <div className="relative">
+              <div className="inline-flex p-3 bg-white/10 rounded-xl mb-4">
+                <MapPin className="w-7 h-7 text-white" />
               </div>
-              <h4 className="text-emerald-400 font-semibold text-lg">
+              <h4 className="text-white font-bold text-2xl mb-2">
                 Report Waste
               </h4>
+              <p className="text-emerald-100 text-base leading-relaxed">
+                Submit a new waste report with photos and location details to
+                help your community
+              </p>
+              <div className="mt-6 inline-flex items-center text-white font-semibold">
+                <span>Get Started</span>
+                <TrendingUp className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </div>
             </div>
-            <p className="text-slate-400 text-sm">
-              Submit a new waste report with photos and location details
-            </p>
           </Link>
 
-          <div className="p-6 bg-slate-800/30 border border-slate-700 rounded-xl text-left">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
-                <span className="text-purple-400 text-lg">👥</span>
+          <div className="group relative overflow-hidden bg-gradient-to-br from-purple-00 to-purple-900 rounded-2xl p-8 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 cursor-pointer">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-20 -mt-20"></div>
+            <div className="relative">
+              <div className="inline-flex p-3 bg-white/10 rounded-xl mb-4">
+                <TrendingUp className="w-7 h-7 text-white" />
               </div>
-              <h4 className="text-purple-400 font-semibold text-lg">
+              <h4 className="text-white font-bold text-2xl mb-2">
                 Community Impact
               </h4>
+              <p className="text-purple-100 text-base leading-relaxed">
+                View your contributions and the positive impact you&apos;re
+                making in your neighborhood
+              </p>
+              <div className="mt-6 inline-flex items-center text-white font-semibold opacity-60">
+                <span>Coming Soon</span>
+              </div>
             </div>
-            <p className="text-slate-400 text-sm">
-              View your contributions and impact on the community
-            </p>
           </div>
         </div>
 
         {/* Recent Reports */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">
-            Recent Reports
-          </h3>
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 md:p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-white">Recent Activity</h3>
+            {reports.length > 0 && (
+              <span className="text-sm text-slate-400 font-medium">
+                {reports.length} total reports
+              </span>
+            )}
+          </div>
+
           {loading ? (
-            <p className="text-slate-400">Loading...</p>
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+            </div>
           ) : reports.length === 0 ? (
-            <p className="text-slate-400">
-              No reports yet. Start by submitting your first waste report!
-            </p>
+            <div className="text-center py-16">
+              <div className="inline-flex p-4 bg-slate-700/30 rounded-2xl mb-4">
+                <AlertCircle className="w-12 h-12 text-slate-500" />
+              </div>
+              <p className="text-slate-400 text-lg mb-2">No reports yet</p>
+              <p className="text-slate-500 text-sm mb-6">
+                Start by submitting your first waste report
+              </p>
+              <Link
+                href="/dashboard/user/report"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors"
+              >
+                <MapPin className="w-4 h-4" />
+                Create First Report
+              </Link>
+            </div>
           ) : (
             <div className="space-y-3">
-              {reports.map((report) => (
-                <div
-                  key={report.id}
-                  className="p-4 bg-slate-700/50 border border-slate-600 rounded-lg flex justify-between items-center hover:bg-slate-700/70 transition"
-                >
-                  <div>
-                    <p className="text-white font-medium capitalize">
-                      {report.category.toLowerCase()}
-                    </p>
-                    <p className="text-slate-400 text-sm">
-                      {new Date(report.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      report.status === "VERIFIED"
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : report.status === "PENDING"
-                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                          : "bg-red-500/20 text-red-400 border border-red-500/30"
-                    }`}
+              {reports.map((report) => {
+                const color = getCategoryColor(report.category);
+                return (
+                  <div
+                    key={report.id}
+                    className="group bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-slate-600 rounded-xl p-5 transition-all duration-300"
                   >
-                    {report.status}
-                  </span>
-                </div>
-              ))}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 bg-${color}-500/10 rounded-lg`}>
+                          <FileText className={`w-5 h-5 text-${color}-400`} />
+                        </div>
+                        <div>
+                          <p className="text-white font-semibold text-lg capitalize">
+                            {report.category.toLowerCase()} Waste
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Calendar className="w-4 h-4 text-slate-500" />
+                            <p className="text-slate-400 text-sm">
+                              {new Date(report.createdAt).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                }
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+                          report.status === "VERIFIED"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : report.status === "PENDING"
+                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                              : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        }`}
+                      >
+                        {report.status}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* Volunteer Request Modal */}
+      {/* Volunteer Modal */}
       {showVolunteerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-6 flex justify-between items-start">
+            <div className="sticky top-0 bg-slate-900/95 backdrop-blur-lg border-b border-slate-700 p-6 flex justify-between items-center">
               <div>
-                <h3 className="text-2xl font-bold text-emerald-400 mb-2">
-                  Become a Volunteer
+                <h3 className="text-3xl font-bold text-white mb-2">
+                  Volunteer Program
                 </h3>
-                <p className="text-slate-300">
-                  Help build a cleaner future for your community
+                <p className="text-slate-400">
+                  Join us in building a sustainable future
                 </p>
               </div>
-
               <button
                 onClick={() => {
                   setShowVolunteerModal(false);
                   setSubmitted(false);
                   setError(null);
                 }}
-                className="text-slate-400 hover:text-white transition p-1 rounded hover:bg-slate-700"
+                className="text-slate-400 hover:text-white transition p-2 rounded-lg hover:bg-slate-800"
               >
                 <X size={24} />
               </button>
             </div>
 
-            {/* Modal Content */}
             {!submitted ? (
-              <div className="p-6 space-y-6">
-                {/* Role Overview Card */}
-                <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/5 border border-emerald-500/20 rounded-xl p-6">
-                  <h4 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Shield className="text-emerald-400" size={24} />
-                    Your Role as a Volunteer
-                  </h4>
-                  <p className="text-slate-300 mb-4">
-                    As a volunteer verifier, you will play a crucial role in
-                    maintaining the integrity of our waste management system.
-                  </p>
-                </div>
-
-                {/* Key Responsibilities Section */}
-                <div>
-                  <h4 className="text-lg font-semibold mb-4 text-emerald-400">
-                    Key Responsibilities:
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="flex gap-4">
-                      <div className="bg-emerald-500/20 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
-                        <CheckCircle className="text-emerald-400" size={20} />
-                      </div>
-                      <div>
-                        <h5 className="font-semibold mb-1 text-white">
-                          Review Waste Reports
-                        </h5>
-                        <p className="text-slate-300 text-sm">
-                          Examine photos submitted by residents to verify proper
-                          waste segregation into recyclable, organic, and
-                          non-recyclable categories.
-                        </p>
-                      </div>
+              <div className="p-8 space-y-8">
+                {/* Overview */}
+                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-emerald-500/20 rounded-xl">
+                      <Shield className="text-emerald-400 w-6 h-6" />
                     </div>
-
-                    <div className="flex gap-4">
-                      <div className="bg-emerald-500/20 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
-                        <Shield className="text-emerald-400" size={20} />
-                      </div>
-                      <div>
-                        <h5 className="font-semibold mb-1 text-white">
-                          Verify Authenticity
-                        </h5>
-                        <p className="text-slate-300 text-sm">
-                          Check for originality and accuracy. Ensure reports are
-                          genuine and waste is properly categorized according to
-                          guidelines.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4">
-                      <div className="bg-emerald-500/20 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
-                        <Users className="text-emerald-400" size={20} />
-                      </div>
-                      <div>
-                        <h5 className="font-semibold mb-1 text-white">
-                          Approve or Reject
-                        </h5>
-                        <p className="text-slate-300 text-sm">
-                          Make fair decisions to approve valid reports or reject
-                          those that do not meet standards, with constructive
-                          feedback.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4">
-                      <div className="bg-emerald-500/20 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
-                        <Clock className="text-emerald-400" size={20} />
-                      </div>
-                      <div>
-                        <h5 className="font-semibold mb-1 text-white">
-                          Time Commitment
-                        </h5>
-                        <p className="text-slate-300 text-sm">
-                          Flexible! Review reports at your convenience. Most
-                          volunteers spend 2-5 hours per week, but you can do
-                          more or less.
-                        </p>
-                      </div>
+                    <div>
+                      <h4 className="text-xl font-bold text-white mb-2">
+                        Your Role as Volunteer
+                      </h4>
+                      <p className="text-slate-300 leading-relaxed">
+                        Help maintain the integrity of our waste management
+                        system by verifying community reports and ensuring
+                        accurate data.
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Requirements Section */}
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                  <h4 className="text-lg font-semibold mb-3 text-white">
-                    Requirements:
+                {/* Responsibilities */}
+                <div>
+                  <h4 className="text-xl font-bold text-white mb-6">
+                    Key Responsibilities
                   </h4>
-                  <ul className="space-y-2 text-slate-300 text-sm">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-1">✓</span>
-                      <span>Commitment to environmental sustainability</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-1">✓</span>
-                      <span>
-                        Basic knowledge of waste segregation categories
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-1">✓</span>
-                      <span>Fair and unbiased decision-making</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 mt-1">✓</span>
-                      <span>Reliable internet access</span>
-                    </li>
+                  <div className="grid gap-4">
+                    {[
+                      {
+                        icon: CheckCircle,
+                        title: "Review Waste Reports",
+                        description:
+                          "Examine submitted photos and verify proper waste segregation into appropriate categories.",
+                      },
+                      {
+                        icon: Shield,
+                        title: "Verify Authenticity",
+                        description:
+                          "Ensure reports are genuine and waste is correctly categorized according to guidelines.",
+                      },
+                      {
+                        icon: Users,
+                        title: "Community Decisions",
+                        description:
+                          "Make fair decisions to approve valid reports with constructive feedback when needed.",
+                      },
+                      {
+                        icon: Clock,
+                        title: "Flexible Commitment",
+                        description:
+                          "Review at your convenience. Most volunteers contribute 2-5 hours per week.",
+                      },
+                    ].map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex gap-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 hover:border-slate-600 transition-colors"
+                      >
+                        <div className="flex-shrink-0 p-3 bg-emerald-500/10 rounded-xl h-fit">
+                          <item.icon className="text-emerald-400 w-5 h-5" />
+                        </div>
+                        <div>
+                          <h5 className="font-semibold text-white mb-1 text-base">
+                            {item.title}
+                          </h5>
+                          <p className="text-slate-400 text-sm leading-relaxed">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Requirements */}
+                <div className="bg-slate-800/30 border border-slate-700 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-white mb-4">
+                    Requirements
+                  </h4>
+                  <ul className="space-y-3">
+                    {[
+                      "Commitment to environmental sustainability",
+                      "Basic knowledge of waste segregation",
+                      "Fair and unbiased decision-making",
+                      "Reliable internet access",
+                    ].map((req, index) => (
+                      <li key={index} className="flex items-center gap-3">
+                        <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle className="w-3 h-3 text-emerald-400" />
+                        </div>
+                        <span className="text-slate-300">{req}</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
 
-                {/* Error Message Display */}
                 {error && (
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                     <p className="text-red-400 text-sm">{error}</p>
                   </div>
                 )}
 
-                {/* Submit Button */}
                 <button
                   onClick={handleVolunteerSubmit}
                   disabled={volunteerLoading}
-                  className="w-full bg-gradient-to-r from-emerald-500 to-green-500 px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-2xl hover:shadow-emerald-500/50 transition transform hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {volunteerLoading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Submitting...
+                      <span>Submitting Application...</span>
                     </>
                   ) : (
-                    <>Apply to Volunteer</>
+                    <>
+                      <Users className="w-5 h-5" />
+                      <span>Apply to Volunteer</span>
+                    </>
                   )}
                 </button>
 
-                {/* Disclaimer Text */}
-                <p className="text-xs text-slate-400 text-center">
-                  Your request will be reviewed by our admin team. You will
-                  receive a confirmation email once approved.
+                <p className="text-xs text-slate-500 text-center">
+                  Your application will be reviewed by our admin team.
+                  You&apos;ll receive confirmation via email once approved.
                 </p>
               </div>
             ) : (
-              // Success State - After submission
-              <div className="p-8 text-center relative">
-                {/* Close button for success message */}
+              <div className="p-12 text-center">
+                <div className="inline-flex p-4 bg-emerald-500/10 rounded-2xl mb-6">
+                  <CheckCircle className="text-emerald-400 w-16 h-16" />
+                </div>
+                <h4 className="text-3xl font-bold text-white mb-4">
+                  Application Submitted!
+                </h4>
+                <p className="text-slate-300 text-lg mb-2 max-w-md mx-auto">
+                  Thank you for stepping forward to make a difference in your
+                  community.
+                </p>
+                <p className="text-slate-400 mb-8">
+                  Our admin team will review your request and contact you
+                  shortly via email.
+                </p>
                 <button
                   onClick={() => {
                     setShowVolunteerModal(false);
                     setSubmitted(false);
                   }}
-                  className="absolute top-4 right-4 text-slate-400 hover:text-white transition p-1 rounded hover:bg-slate-700"
+                  className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors"
                 >
-                  <X size={20} />
+                  Close
                 </button>
-
-                {/* Success Icon */}
-                <div className="bg-emerald-500/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle className="text-emerald-400" size={40} />
-                </div>
-
-                {/* Success Message */}
-                <h4 className="text-2xl font-bold mb-3 text-emerald-400">
-                  Request Submitted!
-                </h4>
-                <p className="text-slate-300 mb-4">
-                  Thank you for wanting to make a difference! Our admin team
-                  will review your volunteer request and get back to you
-                  shortly.
-                </p>
-                <p className="text-sm text-slate-400 mb-6">
-                  You will receive an email confirmation once your account is
-                  approved.
-                </p>
               </div>
             )}
           </div>

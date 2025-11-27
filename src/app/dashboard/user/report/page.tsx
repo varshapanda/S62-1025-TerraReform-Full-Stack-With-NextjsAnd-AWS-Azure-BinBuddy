@@ -3,7 +3,18 @@ import React, { useState, useRef, useEffect } from "react";
 import type L from "leaflet";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
-import { MapPin, Navigation, Edit3, Check } from "lucide-react";
+import {
+  MapPin,
+  Navigation,
+  Edit3,
+  Check,
+  Upload,
+  Image as ImageIcon,
+  AlertCircle,
+  Loader2,
+  Map as MapIcon,
+  CheckCircle,
+} from "lucide-react";
 
 export default function ReportPage() {
   const router = useRouter();
@@ -33,15 +44,12 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-
-  // Location states
   const [locationMode, setLocationMode] = useState<"map" | "manual">("map");
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [fetchingAddress, setFetchingAddress] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showMap, setShowMap] = useState(false);
 
-  // Load Leaflet dynamically
   useEffect(() => {
     if (typeof window === "undefined" || mapLoaded) return;
 
@@ -62,32 +70,28 @@ export default function ReportPage() {
     loadLeaflet();
   }, [mapLoaded]);
 
-  // Initialize map when switching to map mode
   useEffect(() => {
     if (showMap && mapLoaded && !mapRef.current) {
       setTimeout(() => {
         initMap();
       }, 50);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showMap, mapLoaded]);
 
   const initMap = () => {
     const L = window.L as typeof import("leaflet");
     if (!L) return;
 
-    // IMPORTANT: Check if container exists
     const container = document.getElementById("map-container");
     if (!container) {
       console.warn("Map container not found, retrying...");
-      setTimeout(initMap, 100); // Retry after 100ms
+      setTimeout(initMap, 100);
       return;
     }
 
     const defaultLat = formData.lat || 28.6139;
     const defaultLng = formData.lng || 77.209;
 
-    // Initialize map
     const map = L.map("map-container").setView([defaultLat, defaultLng], 13);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -241,9 +245,6 @@ export default function ReportPage() {
         throw new Error("Please enter address details");
       }
 
-      console.log("Step 1: Requesting presigned URL...");
-
-      // Step 1: Get presigned URL
       const presignRes = await fetch("/api/uploads/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -266,9 +267,6 @@ export default function ReportPage() {
         throw new Error("No upload URL in response");
       }
 
-      console.log("Step 2: Uploading file to S3...");
-
-      // Step 2: Upload to S3
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: {
@@ -281,14 +279,10 @@ export default function ReportPage() {
         throw new Error(`File upload failed: ${uploadRes.status}`);
       }
 
-      console.log("Step 3: File uploaded successfully");
-
-      // Step 3: Extract S3 key
       const presignedUrlObj = new URL(uploadUrl);
       const s3Key = presignedUrlObj.pathname.substring(1);
       const imageUrl = `${process.env.NEXT_PUBLIC_S3_URL}/${s3Key}`;
 
-      // Build full address string
       const fullAddressString =
         locationMode === "manual"
           ? [
@@ -303,9 +297,6 @@ export default function ReportPage() {
               .join(", ")
           : address.fullAddress;
 
-      console.log("Step 4: Creating report in database...");
-
-      // Step 4: Create report
       const reportRes = await fetch("/api/reports/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -315,7 +306,6 @@ export default function ReportPage() {
           note: formData.note || undefined,
           lat: formData.lat,
           lng: formData.lng,
-          // Address fields
           address: fullAddressString || undefined,
           houseNo: address.houseNo || undefined,
           street: address.street || undefined,
@@ -331,7 +321,6 @@ export default function ReportPage() {
         throw new Error(errData.error || "Report creation failed");
       }
 
-      console.log("Report created successfully!");
       setSuccess(true);
       setTimeout(() => {
         router.push("/dashboard/user");
@@ -356,59 +345,83 @@ export default function ReportPage() {
 
   return (
     <DashboardLayout role="user">
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Report Waste</h2>
-          <p className="text-slate-400">
-            Help your community by reporting segregated waste
+          <h1 className="text-3xl font-bold text-white mb-2">Create Report</h1>
+          <p className="text-slate-400 text-lg">
+            Document and report waste for community verification
           </p>
         </div>
 
         {success && (
-          <div className="bg-emerald-500/10 border border-emerald-500 text-emerald-400 p-4 rounded-lg">
-            ✓ Report submitted successfully!
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <span className="text-emerald-400 font-medium">
+              Report submitted successfully! Redirecting...
+            </span>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500 text-red-400 p-4 rounded-lg">
-            {error}
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <span className="text-red-400">{error}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT COLUMN - Image & Category */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* LEFT COLUMN */}
           <div className="space-y-6">
-            {/* File Upload */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-              <label className="block text-white font-semibold mb-4 text-lg">
-                Upload Photo *
+            {/* Image Upload */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600 transition-colors">
+              <label className="block text-white font-bold mb-4 text-lg flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-emerald-400" />
+                Photo Evidence
+                <span className="text-red-400">*</span>
               </label>
 
               {preview ? (
                 <div className="space-y-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="w-full h-80 object-cover rounded-lg"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full p-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
-                  >
-                    Change Image
-                  </button>
+                  <div className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={preview}
+                      alt="Preview"
+                      className="w-full h-80 object-cover rounded-xl"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg transition font-medium"
+                      >
+                        Change Image
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>
+                      {file?.name} ({(file!.size / 1024).toFixed(1)} KB)
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-80 border-2 border-dashed border-slate-600 hover:border-emerald-500 rounded-lg transition text-slate-400 hover:text-emerald-400 flex flex-col items-center justify-center gap-3"
+                  className="w-full h-80 border-2 border-dashed border-slate-600 hover:border-emerald-500 rounded-xl transition-all text-slate-400 hover:text-emerald-400 flex flex-col items-center justify-center gap-4 hover:bg-slate-800/50 group"
                 >
-                  <span className="text-6xl"></span>
-                  <span className="text-lg">Click to upload image</span>
-                  <span className="text-sm text-slate-500">Max 5MB</span>
+                  <div className="p-4 bg-slate-700/50 rounded-full group-hover:bg-emerald-500/10 transition-colors">
+                    <Upload className="w-8 h-8 group-hover:text-emerald-400 transition-colors" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold mb-1">
+                      Click to upload image
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      JPG, PNG or WebP (Max 5MB)
+                    </p>
+                  </div>
                 </button>
               )}
 
@@ -422,51 +435,59 @@ export default function ReportPage() {
             </div>
 
             {/* Category */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-              <label className="block text-white font-semibold mb-4 text-lg">
-                Waste Category *
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6">
+              <label className="block text-white font-bold mb-4 text-lg">
+                Waste Category
+                <span className="text-red-400 ml-1">*</span>
               </label>
               <select
                 value={formData.category}
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
-                className="w-full p-4 bg-slate-700 border border-slate-600 text-white rounded-lg focus:border-emerald-500 outline-none text-lg"
+                className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-base font-medium transition-all"
               >
-                <option value="WET">Wet Waste (Food, Garden)</option>
-                <option value="DRY">Dry Waste (Paper, Plastic)</option>
+                <option value="WET">Wet Waste (Organic, Food)</option>
+                <option value="DRY">Dry Waste (Paper, Plastic, Metal)</option>
                 <option value="MIXED">Mixed Waste</option>
-                <option value="HAZARDOUS">Hazardous</option>
+                <option value="HAZARDOUS">Hazardous Waste</option>
                 <option value="OTHER">Other</option>
               </select>
             </div>
 
-            {/* Note */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-              <label className="block text-white font-semibold mb-4 text-lg">
-                Additional Notes
+            {/* Notes */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6">
+              <label className="block text-white font-bold mb-4 text-lg">
+                Additional Details
               </label>
               <textarea
                 value={formData.note}
                 onChange={(e) =>
                   setFormData({ ...formData, note: e.target.value })
                 }
-                placeholder="Any additional details about the waste..."
+                placeholder="Describe the waste condition, quantity, or any other relevant information..."
                 maxLength={500}
-                className="w-full p-4 bg-slate-700 border border-slate-600 text-white rounded-lg outline-none focus:border-emerald-500"
+                className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none transition-all"
                 rows={6}
               />
-              <p className="text-slate-500 text-sm mt-2">
-                {formData.note.length}/500 characters
-              </p>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-slate-500 text-sm">
+                  Optional but helpful for verification
+                </p>
+                <p className="text-slate-500 text-sm font-medium">
+                  {formData.note.length}/500
+                </p>
+              </div>
             </div>
           </div>
 
           {/* RIGHT COLUMN - Location */}
           <div className="space-y-6">
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-              <label className="block text-white font-semibold mb-4 text-lg">
-                Location *
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6">
+              <label className="block text-white font-bold mb-4 text-lg flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-emerald-400" />
+                Location Details
+                <span className="text-red-400">*</span>
               </label>
 
               {/* Mode Toggle */}
@@ -478,24 +499,24 @@ export default function ReportPage() {
                       handleAutoDetect();
                     }
                   }}
-                  className={`p-4 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium ${
+                  className={`p-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-semibold ${
                     locationMode === "map"
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-700 hover:bg-slate-600 text-slate-300"
+                      ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                      : "bg-slate-700/50 hover:bg-slate-700 text-slate-300 border border-slate-600"
                   }`}
                 >
-                  <MapPin className="w-5 h-5" />
+                  <MapIcon className="w-4 h-4" />
                   Use Map
                 </button>
                 <button
                   onClick={() => setLocationMode("manual")}
-                  className={`p-4 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium ${
+                  className={`p-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-semibold ${
                     locationMode === "manual"
-                      ? "bg-purple-500 text-white"
-                      : "bg-slate-700 hover:bg-slate-600 text-slate-300"
+                      ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/20"
+                      : "bg-slate-700/50 hover:bg-slate-700 text-slate-300 border border-slate-600"
                   }`}
                 >
-                  <Edit3 className="w-5 h-5" />
+                  <Edit3 className="w-4 h-4" />
                   Enter Manually
                 </button>
               </div>
@@ -509,23 +530,31 @@ export default function ReportPage() {
                       setShowMap(true);
                     }}
                     disabled={fetchingLocation}
-                    className="w-full p-4 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition flex items-center justify-center gap-2 font-medium"
+                    className="w-full p-4 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-xl transition-all flex items-center justify-center gap-2 font-semibold disabled:opacity-50"
                   >
-                    <Navigation className="w-5 h-5" />
-                    {fetchingLocation
-                      ? "Detecting Location..."
-                      : "Auto-detect My Location"}
+                    {fetchingLocation ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Detecting Location...
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="w-5 h-5" />
+                        Auto-detect My Location
+                      </>
+                    )}
                   </button>
 
                   {showMap && isLocationSet && (
                     <>
                       <div
                         id="map-container"
-                        className="w-full h-96 rounded-lg border border-slate-600"
+                        className="w-full h-96 rounded-xl border border-slate-600 overflow-hidden"
                         style={{ zIndex: 1 }}
                       />
-                      <p className="text-slate-400 text-sm text-center">
-                        Click on map or drag marker to change location
+                      <p className="text-slate-400 text-sm text-center flex items-center justify-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Click on map or drag marker to adjust location
                       </p>
                     </>
                   )}
@@ -533,15 +562,16 @@ export default function ReportPage() {
                   {!showMap && (
                     <button
                       onClick={() => setShowMap(true)}
-                      className="w-full p-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                      className="w-full p-4 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 text-white rounded-xl transition-all font-medium"
                     >
-                      Pick Location on Map
+                      Open Map Picker
                     </button>
                   )}
 
                   {fetchingAddress && (
-                    <div className="text-center text-blue-400 text-sm py-2">
-                      🔍 Fetching address...
+                    <div className="text-center text-blue-400 text-sm py-2 flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Fetching address details...
                     </div>
                   )}
                 </div>
@@ -553,12 +583,12 @@ export default function ReportPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       type="text"
-                      placeholder="House/Flat No *"
+                      placeholder="House/Flat No"
                       value={address.houseNo}
                       onChange={(e) =>
                         setAddress({ ...address, houseNo: e.target.value })
                       }
-                      className="p-3 bg-slate-700 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500"
+                      className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                     <input
                       type="text"
@@ -567,7 +597,7 @@ export default function ReportPage() {
                       onChange={(e) =>
                         setAddress({ ...address, street: e.target.value })
                       }
-                      className="p-3 bg-slate-700 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500"
+                      className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                   </div>
                   <input
@@ -577,7 +607,7 @@ export default function ReportPage() {
                     onChange={(e) =>
                       setAddress({ ...address, locality: e.target.value })
                     }
-                    className="w-full p-3 bg-slate-700 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500"
+                    className="w-full p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <input
@@ -587,7 +617,7 @@ export default function ReportPage() {
                       onChange={(e) =>
                         setAddress({ ...address, city: e.target.value })
                       }
-                      className="p-3 bg-slate-700 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500"
+                      className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                     <input
                       type="text"
@@ -596,7 +626,7 @@ export default function ReportPage() {
                       onChange={(e) =>
                         setAddress({ ...address, state: e.target.value })
                       }
-                      className="p-3 bg-slate-700 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500"
+                      className="p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                     />
                   </div>
                   <input
@@ -606,32 +636,42 @@ export default function ReportPage() {
                     onChange={(e) =>
                       setAddress({ ...address, pincode: e.target.value })
                     }
-                    className="w-full p-3 bg-slate-700 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500"
+                    className="w-full p-3 bg-slate-700/50 border border-slate-600 text-white rounded-lg outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   />
                   <button
                     onClick={handleAutoDetect}
                     disabled={fetchingLocation}
-                    className="w-full p-3 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition flex items-center justify-center gap-2"
+                    className="w-full p-3 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50"
                   >
-                    <Navigation className="w-4 h-4" />
-                    {fetchingLocation
-                      ? "Getting coordinates..."
-                      : "Get GPS Coordinates"}
+                    {fetchingLocation ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Getting coordinates...
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="w-4 h-4" />
+                        Get GPS Coordinates
+                      </>
+                    )}
                   </button>
                 </div>
               )}
 
-              {/* Address Display */}
+              {/* Address Confirmation */}
               {isLocationSet && (
-                <div className="mt-6 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                <div className="mt-6 p-5 bg-emerald-500/5 rounded-xl border border-emerald-500/20">
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <h3 className="text-emerald-400 font-semibold text-sm">
-                      Location Confirmed
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-5 h-5 text-emerald-400" />
+                      <h3 className="text-emerald-400 font-semibold">
+                        Location Confirmed
+                      </h3>
+                    </div>
                     {locationMode === "map" && (
                       <button
                         onClick={() => setLocationMode("manual")}
-                        className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                        className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 font-medium"
                       >
                         <Edit3 className="w-3 h-3" />
                         Edit
@@ -641,7 +681,7 @@ export default function ReportPage() {
 
                   {address.fullAddress || (address.city && address.state) ? (
                     <div className="space-y-2">
-                      <p className="text-white text-sm">
+                      <p className="text-white text-sm leading-relaxed">
                         {locationMode === "map" && address.fullAddress
                           ? address.fullAddress
                           : [
@@ -655,13 +695,13 @@ export default function ReportPage() {
                               .filter(Boolean)
                               .join(", ")}
                       </p>
-                      <p className="text-slate-400 text-xs">
-                        Coordinates: {formData.lat.toFixed(6)},{" "}
+                      <p className="text-slate-400 text-xs font-mono">
+                        GPS: {formData.lat.toFixed(6)},{" "}
                         {formData.lng.toFixed(6)}
                       </p>
                     </div>
                   ) : (
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-slate-400 text-sm font-mono">
                       Coordinates: {formData.lat.toFixed(6)},{" "}
                       {formData.lng.toFixed(6)}
                     </p>
@@ -676,17 +716,32 @@ export default function ReportPage() {
         <button
           onClick={handleSubmit}
           disabled={loading || !file || !isLocationSet || !isAddressComplete}
-          className="w-full p-5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg rounded-xl transition flex items-center justify-center gap-2"
+          className="w-full p-6 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-bold text-xl rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-emerald-500/30 disabled:shadow-none hover:scale-[1.02] disabled:scale-100"
         >
           {loading ? (
-            "Submitting Report..."
+            <>
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>Submitting Report...</span>
+            </>
           ) : (
             <>
               <Check className="w-6 h-6" />
-              Submit Waste Report
+              <span>Submit Waste Report</span>
             </>
           )}
         </button>
+
+        {/* Help Text */}
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+          <p className="text-blue-400 text-sm flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>
+              Your report will be reviewed by community volunteers before
+              verification. Please ensure the photo clearly shows the waste
+              segregation.
+            </span>
+          </p>
+        </div>
       </div>
     </DashboardLayout>
   );
