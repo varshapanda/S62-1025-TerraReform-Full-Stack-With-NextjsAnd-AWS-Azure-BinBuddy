@@ -133,11 +133,11 @@ export const welcomeTemplate = (userName: string) => `
         <li><strong>Unlock Badges</strong> - Achieve milestones and show off</li>
       </ul>
 
-<div style="text-align: center; margin: 30px 0;">
-  <a href="http://localhost:3000/dashboard" class="button" style="color: white !important;">
-    Go to Dashboard →
-  </a>
-</div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="http://localhost:3000/dashboard" class="button" style="color: white !important;">
+          Go to Dashboard →
+        </a>
+      </div>
 
       <p style="margin-top: 30px; color: #666; font-size: 14px;">
         <strong>Need help getting started?</strong><br>
@@ -155,54 +155,157 @@ export const welcomeTemplate = (userName: string) => `
 </html>
 `;
 
-export const passwordResetTemplate = (resetLink: string, userName: string) => `
+// UPDATED PASSWORD RESET TEMPLATE - Matches your existing style
+export const passwordResetTemplate = (userName: string, resetLink: string) => `
 <!DOCTYPE html>
 <html>
 <head>
   <style>
     body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      line-height: 1.6;
-      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6; 
+      color: #333; 
+      margin: 0;
+      padding: 0;
       background-color: #ffffff;
     }
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
+    .container { 
+      max-width: 600px; 
+      margin: 20px auto; 
       background: white;
-      padding: 40px;
       border-radius: 8px;
+      overflow: hidden;
       box-shadow: 0 0 0 1px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
     }
-    .button {
-      display: inline-block;
+    .header { 
       background: #000000;
-      color: white;
-      padding: 12px 30px;
-      text-decoration: none;
-      border-radius: 6px;
-      margin: 20px 0;
-      font-weight: 500;
+      color: white; 
+      padding: 40px 20px; 
+      text-align: center; 
     }
-    h2 {
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .emoji {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 15px;
+    }
+    .content { 
+      padding: 40px 30px; 
+    }
+    .content h2 {
       color: #000000;
       margin-top: 0;
       font-weight: 600;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .button {
+      display: inline-block;
+      padding: 14px 32px;
+      background: #000000;
+      color: white !important;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+    }
+    .warning-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .warning-box p {
+      margin: 0;
+      color: #856404;
+      font-size: 14px;
+    }
+    .info-box {
+      background: #f8f8f8;
+      border-left: 4px solid #404040;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .link-box {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+      word-break: break-all;
+      font-size: 13px;
+      color: #666;
+    }
+    .footer { 
+      text-align: center; 
+      padding: 30px; 
+      font-size: 13px; 
+      color: #666; 
+      background: #f8f8f8;
+      border-top: 1px solid #e0e0e0;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Password Reset Request</h2>
-    <p>Hi ${userName},</p>
-    <p>You requested to reset your BinBuddy password. Click the button below to proceed:</p>
-    <p style="text-align: center;">
-      <a href="${resetLink}" class="button">Reset Password</a>
-    </p>
-    <p><small>This link expires in 1 hour.</small></p>
-    <p>If you didn't request this, please ignore this email and your password will remain unchanged.</p>
-    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
-    <p style="font-size: 12px; color: #666;">BinBuddy - Smart Waste Management</p>
+    <div class="header">
+      <span class="emoji">🔐</span>
+      <h1>Password Reset Request</h1>
+    </div>
+    
+    <div class="content">
+      <h2>Hi ${userName},</h2>
+      <p>
+        We received a request to reset your password for your BinBuddy account. 
+        If you didn't make this request, you can safely ignore this email.
+      </p>
+      
+      <div class="info-box">
+        <strong>To reset your password, click the button below:</strong>
+      </div>
+
+      <div class="button-container">
+        <a href="${resetLink}" class="button">
+          Reset My Password
+        </a>
+      </div>
+
+      <p style="font-size: 14px; color: #666; margin-top: 30px;">
+        Or copy and paste this link into your browser:
+      </p>
+      <div class="link-box">
+        ${resetLink}
+      </div>
+
+      <div class="warning-box">
+        <p>
+          <strong>⚠️ Security Notice</strong><br><br>
+          • This link will expire in <strong>1 hour</strong><br>
+          • If you didn't request this password reset, please ignore this email<br>
+          • Your password will remain unchanged unless you click the link above
+        </p>
+      </div>
+
+      <p style="margin-top: 30px; color: #666; font-size: 14px;">
+        <strong>Need help?</strong><br>
+        If you're having trouble resetting your password or have security concerns, 
+        please contact our support team immediately.
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p style="margin: 0 0 10px 0;"><strong>BinBuddy</strong> - Smart Waste Segregation & Management</p>
+      <p style="margin: 0; color: #999;">This is an automated email. Please do not reply.</p>
+      <p style="margin: 10px 0 0 0; color: #999;">&copy; 2025 BinBuddy. All rights reserved.</p>
+    </div>
   </div>
 </body>
 </html>
@@ -274,8 +377,6 @@ export const reportVerifiedTemplate = (
 </body>
 </html>
 `;
-
-// Add this to lib/email-template.ts
 
 export const emailVerificationTemplate = (
   userName: string,

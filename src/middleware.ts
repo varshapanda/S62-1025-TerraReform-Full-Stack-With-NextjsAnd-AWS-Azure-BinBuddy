@@ -43,7 +43,9 @@ export function middleware(req: NextRequest) {
     "/api/auth/signup",
     "/api/auth/logout",
     "/api/auth/refresh",
-    "/api/auth/verify-email", // ADDED: Email verification should be public
+    "/api/auth/verify-email",
+    "/api/auth/forgot-password", // ADDED: Forgot password
+    "/api/auth/reset-password", // ADDED: Reset password
     "/api/leaderboard",
     "/api/leaderboard/community",
     "/api/leaderboard/user",
@@ -53,7 +55,13 @@ export function middleware(req: NextRequest) {
   const commonAuthApiPaths = ["/api/auth/me", "/api/user/profile"];
 
   // Auth pages that authenticated users shouldn't access
-  const authPages = ["/login", "/signup", "/"];
+  const authPages = [
+    "/login",
+    "/signup",
+    "/",
+    "/forgot-password",
+    "/reset-password",
+  ];
 
   // Protected pages that require authentication
   const protectedPages = [
@@ -69,7 +77,7 @@ export function middleware(req: NextRequest) {
 
   // === PAGE REDIRECTS ===
 
-  // Redirect authenticated users away from login/signup pages to their role-based dashboard
+  // Redirect authenticated users away from login/signup/forgot-password pages to their role-based dashboard
   if (authPages.includes(pathname) && success && user) {
     const dashboardPath = getDashboardPath(user.role);
     return NextResponse.redirect(new URL(dashboardPath, req.url));
@@ -166,6 +174,8 @@ export const config = {
     "/dashboard",
     "/login",
     "/signup",
+    "/forgot-password",
+    "/reset-password",
     "/",
   ],
 };

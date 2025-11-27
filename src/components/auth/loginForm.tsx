@@ -25,7 +25,7 @@ export default function LoginForm() {
     password: "",
   });
 
-  // Check for URL parameters (verification success, errors, etc.)
+  // Check for URL parameters (verification success, password reset, errors, etc.)
   useEffect(() => {
     const message = searchParams.get("message");
     const urlError = searchParams.get("error");
@@ -34,6 +34,10 @@ export default function LoginForm() {
       setSuccessMessage("Email verified successfully! You can now log in.");
     } else if (message === "already_verified") {
       setSuccessMessage("Your email is already verified. Please log in.");
+    } else if (message === "password_reset_success") {
+      setSuccessMessage(
+        "Password reset successfully! You can now log in with your new password."
+      );
     } else if (urlError === "invalid_token") {
       setError(
         "Invalid verification link. The token was not found in our system."
