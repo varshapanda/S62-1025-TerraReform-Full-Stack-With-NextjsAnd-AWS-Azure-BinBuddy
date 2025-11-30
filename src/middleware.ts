@@ -44,8 +44,8 @@ export function middleware(req: NextRequest) {
     "/api/auth/logout",
     "/api/auth/refresh",
     "/api/auth/verify-email",
-    "/api/auth/forgot-password", // ADDED: Forgot password
-    "/api/auth/reset-password", // ADDED: Reset password
+    "/api/auth/forgot-password",
+    "/api/auth/reset-password",
     "/api/leaderboard",
     "/api/leaderboard/community",
     "/api/leaderboard/user",
@@ -63,37 +63,59 @@ export function middleware(req: NextRequest) {
     "/reset-password",
   ];
 
-  // Protected pages that require authentication
-  const protectedPages = [
-    "/dashboard",
-    "/dashboard/user/report",
-    "/dashboard/volunteer",
-    "/dashboard/volunteer/verify",
-    "/dashboard/volunteer/history",
-  ];
-
   // Check authentication status
   const { success, user } = verifyToken(req);
 
   // === PAGE REDIRECTS ===
 
-  // Redirect authenticated users away from login/signup/forgot-password pages to their role-based dashboard
+  // Redirect authenticated users away from login/signup pages
   if (authPages.includes(pathname) && success && user) {
     const dashboardPath = getDashboardPath(user.role);
     return NextResponse.redirect(new URL(dashboardPath, req.url));
   }
 
-  // Redirect unauthenticated users from protected pages to login
-  if (protectedPages.some((path) => pathname.startsWith(path)) && !success) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
+  // === DASHBOARD ROLE-BASED ACCESS (SERVER-SIDE) ===
+  if (pathname.startsWith("/dashboard")) {
+    // Check if user is authenticated
+    if (!success || !user) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
 
-  // Redirect to role-based dashboard from generic /dashboard
-  if (pathname === "/dashboard" && success && user) {
-    const dashboardPath = getDashboardPath(user.role);
-    if (dashboardPath !== "/dashboard") {
+    // Map paths to required roles
+    const roleRoutes: Record<string, string> = {
+      "/dashboard/user": "user",
+      "/dashboard/volunteer": "volunteer",
+      "/dashboard/authority": "authority",
+      "/dashboard/admin": "admin",
+    };
+
+    // Check if accessing a role-specific dashboard
+    for (const [route, requiredRole] of Object.entries(roleRoutes)) {
+      if (pathname.startsWith(route)) {
+        const userRole = user.role.toLowerCase();
+        const required = requiredRole.toLowerCase();
+
+        // If role doesn't match, redirect to correct dashboard
+        if (userRole !== required) {
+          const correctDashboard = getDashboardPath(user.role);
+          console.log(
+            `[MIDDLEWARE] Role mismatch: ${userRole} tried to access ${pathname}, redirecting to ${correctDashboard}`
+          );
+          return NextResponse.redirect(new URL(correctDashboard, req.url));
+        }
+        // Role matches, allow request
+        break;
+      }
+    }
+
+    // For generic /dashboard, redirect to role-specific dashboard
+    if (pathname === "/dashboard") {
+      const dashboardPath = getDashboardPath(user.role);
       return NextResponse.redirect(new URL(dashboardPath, req.url));
     }
+
+    // Allow the request to continue if authorized
+    return NextResponse.next();
   }
 
   // === API ROUTES ===
