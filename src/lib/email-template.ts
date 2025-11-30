@@ -2,377 +2,361 @@ export const welcomeTemplate = (userName: string) => `
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.6; 
-      color: #333; 
+      color: #f8fafc;
       margin: 0;
       padding: 0;
-      background-color: #ffffff;
+    }
+    .email-wrapper {
+      width: 100%;
+      padding: 40px 20px;
     }
     .container { 
       max-width: 600px; 
-      margin: 20px auto; 
-      background: white;
-      border-radius: 8px;
+      margin: 0 auto; 
+      background: #1e293b;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 0 0 1px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     }
     .header { 
-      background: #000000;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
       color: white; 
-      padding: 40px 20px; 
-      text-align: center; 
+      padding: 50px 30px; 
+      text-align: center;
+      position: relative;
     }
     .header h1 {
       margin: 0;
-      font-size: 28px;
-      font-weight: 600;
+      font-size: 32px;
+      font-weight: 700;
+      color: white;
     }
-    .emoji {
-      font-size: 48px;
-      display: block;
-      margin-bottom: 15px;
+    .header-subtitle {
+      margin: 10px 0 0 0;
+      opacity: 0.9;
+      font-size: 16px;
+      color: white;
     }
     .content { 
       padding: 40px 30px; 
+      background: #1e293b;
+      color: #e2e8f0;
     }
     .content h2 {
-      color: #000000;
+      color: #10b981;
       margin-top: 0;
       font-weight: 600;
+      font-size: 24px;
+    }
+    .content p {
+      color: #cbd5e1;
+      font-size: 16px;
+      line-height: 1.8;
+      margin: 16px 0;
     }
     .feature-box {
-      background: #f8f8f8;
-      border-left: 4px solid #404040;
-      padding: 20px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 24px;
       margin: 25px 0;
-      border-radius: 4px;
+      border-radius: 12px;
+      color: #a7f3d0;
+    }
+    .feature-box strong {
+      color: #34d399;
+    }
+    .feature-list {
+      margin: 30px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feature-list li {
+      padding: 12px 0 12px 30px;
+      position: relative;
+      color: #cbd5e1;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .feature-list li:before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .feature-list strong {
+      color: #e2e8f0;
+    }
+    .button-container {
+      text-align: center;
+      margin: 35px 0;
     }
     .button {
       display: inline-block;
-      padding: 14px 32px;
-      background: #000000;
-      color: white;
+      padding: 16px 40px;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: white !important;
       text-decoration: none;
-      border-radius: 6px;
-      margin: 20px 0;
-      font-weight: 500;
-      border: none;
-      cursor: pointer;
-    }
-    .stats {
-      display: flex;
-      justify-content: space-around;
-      margin: 30px 0;
-      text-align: center;
-    }
-    .stat-item {
-      flex: 1;
-    }
-    .stat-number {
-      font-size: 28px;
+      border-radius: 10px;
       font-weight: 600;
-      color: #000000;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
     }
-    .stat-label {
-      font-size: 12px;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .info-box {
+      background: rgba(51, 65, 85, 0.5);
+      border-left: 4px solid #64748b;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 8px;
+      color: #cbd5e1;
     }
     .footer { 
       text-align: center; 
       padding: 30px; 
       font-size: 13px; 
-      color: #666; 
-      background: #f8f8f8;
-      border-top: 1px solid #e0e0e0;
+      color: #64748b; 
+      background: #0f172a;
+      border-top: 1px solid #334155;
     }
-    ul {
-      padding-left: 20px;
-      margin: 20px 0;
+    .footer p {
+      margin: 8px 0;
+      color: #64748b;
     }
-    li {
-      margin: 12px 0;
-      line-height: 1.5;
-    }
-    .subtitle {
-      margin: 10px 0 0 0;
-      opacity: 0.8;
-      font-size: 16px;
+    .footer strong {
+      color: #10b981;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <span class="emoji">♻️</span>
-      <h1>Welcome to BinBuddy</h1>
-      <p class="subtitle">Smart Waste Management Starts Here</p>
-    </div>
-    
-    <div class="content">
-      <h2>Hello ${userName}</h2>
-      <p>
-        Welcome to the BinBuddy community! We're thrilled to have you join us in making 
-        waste management smarter, easier, and more rewarding.
-      </p>
+  <div class="email-wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>Welcome to BinBuddy</h1>
+        <p class="header-subtitle">Smart Waste Management Starts Here</p>
+      </div>
       
-      <div class="feature-box">
-        <strong>Your account is now active!</strong><br>
-        You can start reporting waste, earning points, and making a real environmental impact.
+      <div class="content">
+        <h2>Hello ${userName},</h2>
+        <p>
+          Welcome to the BinBuddy community! We're excited to have you join our mission to make 
+          waste management smarter, easier, and more impactful through volunteer-driven verification 
+          and community collaboration.
+        </p>
+        
+        <div class="feature-box">
+          <strong>Your account is now active!</strong><br><br>
+          You can start reporting waste, earning recognition, and making a real environmental impact 
+          through our community-verified system.
+        </div>
+
+        <h3 style="color: #10b981; margin-top: 30px; font-weight: 600; font-size: 20px;">What You Can Do Now</h3>
+        <ul class="feature-list">
+          <li><strong>Upload Waste Images</strong> – Community volunteers verify proper segregation</li>
+          <li><strong>Earn Points</strong> – Get rewarded for every verified report</li>
+          <li><strong>Climb Leaderboards</strong> – Compete with your community</li>
+          <li><strong>Unlock Badges</strong> – Achieve milestones and build your reputation</li>
+        </ul>
+
+        <div class="button-container">
+          <a href="http://localhost:3000/dashboard" class="button">
+            Go to Dashboard
+          </a>
+        </div>
+
+        <div class="info-box">
+          <strong>Need help getting started?</strong><br><br>
+          Check out our quick start guide in the dashboard or reach out to our support team 
+          at support@binbuddy.com
+        </div>
       </div>
-
-      <h3 style="color: #000000; margin-top: 30px; font-weight: 600;">What You Can Do Now:</h3>
-      <ul>
-        <li><strong>Upload Waste Images</strong> - Use AI to verify proper segregation</li>
-        <li><strong>Earn Points</strong> - Get rewarded for every verified report</li>
-        <li><strong>Climb Leaderboards</strong> - Compete with your community</li>
-        <li><strong>Unlock Badges</strong> - Achieve milestones and show off</li>
-      </ul>
-
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="http://localhost:3000/dashboard" class="button" style="color: white !important;">
-          Go to Dashboard →
-        </a>
+      
+      <div class="footer">
+        <p><strong>BinBuddy</strong> – Smart Waste Segregation & Management</p>
+        <p>Community-Driven Verification | Environmental Impact Tracking</p>
+        <p style="margin-top: 15px;">&copy; 2025 BinBuddy. All rights reserved.</p>
       </div>
-
-      <p style="margin-top: 30px; color: #666; font-size: 14px;">
-        <strong>Need help getting started?</strong><br>
-        Check out our quick start guide or reach out to our support team.
-      </p>
-    </div>
-    
-    <div class="footer">
-      <p style="margin: 0 0 10px 0;"><strong>BinBuddy</strong> - Smart Waste Segregation & Management</p>
-      <p style="margin: 0; color: #999;">This is an automated email. Please do not reply.</p>
-      <p style="margin: 10px 0 0 0; color: #999;">&copy; 2025 BinBuddy. All rights reserved.</p>
     </div>
   </div>
 </body>
 </html>
 `;
 
-// UPDATED PASSWORD RESET TEMPLATE - Matches your existing style
 export const passwordResetTemplate = (userName: string, resetLink: string) => `
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.6; 
-      color: #333; 
+      color: #f8fafc;
       margin: 0;
       padding: 0;
-      background-color: #ffffff;
+    }
+    .email-wrapper {
+      width: 100%;
+      padding: 40px 20px;
     }
     .container { 
       max-width: 600px; 
-      margin: 20px auto; 
-      background: white;
-      border-radius: 8px;
+      margin: 0 auto; 
+      background: #1e293b;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 0 0 1px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     }
     .header { 
-      background: #000000;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
       color: white; 
-      padding: 40px 20px; 
-      text-align: center; 
+      padding: 50px 30px; 
+      text-align: center;
     }
     .header h1 {
       margin: 0;
-      font-size: 28px;
-      font-weight: 600;
-    }
-    .emoji {
-      font-size: 48px;
-      display: block;
-      margin-bottom: 15px;
+      font-size: 32px;
+      font-weight: 700;
+      color: white;
     }
     .content { 
       padding: 40px 30px; 
+      background: #1e293b;
+      color: #e2e8f0;
     }
     .content h2 {
-      color: #000000;
+      color: #10b981;
       margin-top: 0;
       font-weight: 600;
+      font-size: 24px;
+    }
+    .content p {
+      color: #cbd5e1;
+      font-size: 16px;
+      line-height: 1.8;
+      margin: 16px 0;
     }
     .button-container {
       text-align: center;
-      margin: 30px 0;
+      margin: 35px 0;
     }
     .button {
       display: inline-block;
-      padding: 14px 32px;
-      background: #000000;
+      padding: 16px 40px;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
       color: white !important;
       text-decoration: none;
-      border-radius: 6px;
-      font-weight: 500;
-      border: none;
-      cursor: pointer;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
     }
     .warning-box {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 20px;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      padding: 24px;
       margin: 25px 0;
-      border-radius: 4px;
+      border-radius: 12px;
     }
     .warning-box p {
       margin: 0;
-      color: #856404;
+      color: #fde68a;
       font-size: 14px;
+      line-height: 1.8;
+    }
+    .warning-box strong {
+      color: #fbbf24;
     }
     .info-box {
-      background: #f8f8f8;
-      border-left: 4px solid #404040;
+      background: rgba(51, 65, 85, 0.5);
+      border-left: 4px solid #64748b;
       padding: 20px;
       margin: 25px 0;
-      border-radius: 4px;
+      border-radius: 8px;
+      color: #cbd5e1;
     }
     .link-box {
-      background: #f8f8f8;
+      background: rgba(15, 23, 42, 0.7);
       padding: 15px;
-      border-radius: 6px;
+      border-radius: 8px;
       margin: 20px 0;
       word-break: break-all;
       font-size: 13px;
-      color: #666;
+      color: #94a3b8;
+      font-family: 'Courier New', monospace;
     }
     .footer { 
       text-align: center; 
       padding: 30px; 
       font-size: 13px; 
-      color: #666; 
-      background: #f8f8f8;
-      border-top: 1px solid #e0e0e0;
+      color: #64748b; 
+      background: #0f172a;
+      border-top: 1px solid #334155;
+    }
+    .footer p {
+      margin: 8px 0;
+      color: #64748b;
+    }
+    .footer strong {
+      color: #10b981;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <span class="emoji">🔐</span>
-      <h1>Password Reset Request</h1>
-    </div>
-    
-    <div class="content">
-      <h2>Hi ${userName},</h2>
-      <p>
-        We received a request to reset your password for your BinBuddy account. 
-        If you didn't make this request, you can safely ignore this email.
-      </p>
+  <div class="email-wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>Password Reset Request</h1>
+      </div>
       
-      <div class="info-box">
-        <strong>To reset your password, click the button below:</strong>
-      </div>
-
-      <div class="button-container">
-        <a href="${resetLink}" class="button">
-          Reset My Password
-        </a>
-      </div>
-
-      <p style="font-size: 14px; color: #666; margin-top: 30px;">
-        Or copy and paste this link into your browser:
-      </p>
-      <div class="link-box">
-        ${resetLink}
-      </div>
-
-      <div class="warning-box">
+      <div class="content">
+        <h2>Hi ${userName},</h2>
         <p>
-          <strong>⚠️ Security Notice</strong><br><br>
-          • This link will expire in <strong>1 hour</strong><br>
-          • If you didn't request this password reset, please ignore this email<br>
-          • Your password will remain unchanged unless you click the link above
+          We received a request to reset your password for your BinBuddy account. 
+          If you didn't make this request, you can safely ignore this email.
         </p>
+        
+        <div class="info-box">
+          <strong>To reset your password, click the button below:</strong>
+        </div>
+
+        <div class="button-container">
+          <a href="${resetLink}" class="button">
+            Reset My Password
+          </a>
+        </div>
+
+        <p style="font-size: 14px; color: #94a3b8; margin-top: 30px;">
+          Or copy and paste this link into your browser:
+        </p>
+        <div class="link-box">
+          ${resetLink}
+        </div>
+
+        <div class="warning-box">
+          <p>
+            <strong>Security Notice</strong><br><br>
+            • This link will expire in 1 hour<br>
+            • If you didn't request this password reset, please ignore this email<br>
+            • Your password will remain unchanged unless you click the link above<br>
+            • For security concerns, contact our support team immediately
+          </p>
+        </div>
       </div>
-
-      <p style="margin-top: 30px; color: #666; font-size: 14px;">
-        <strong>Need help?</strong><br>
-        If you're having trouble resetting your password or have security concerns, 
-        please contact our support team immediately.
-      </p>
+      
+      <div class="footer">
+        <p><strong>BinBuddy</strong> – Smart Waste Segregation & Management</p>
+        <p>Community-Driven Verification | Environmental Impact Tracking</p>
+        <p style="margin-top: 15px;">&copy; 2025 BinBuddy. All rights reserved.</p>
+      </div>
     </div>
-    
-    <div class="footer">
-      <p style="margin: 0 0 10px 0;"><strong>BinBuddy</strong> - Smart Waste Segregation & Management</p>
-      <p style="margin: 0; color: #999;">This is an automated email. Please do not reply.</p>
-      <p style="margin: 10px 0 0 0; color: #999;">&copy; 2025 BinBuddy. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>
-`;
-
-export const reportVerifiedTemplate = (
-  userName: string,
-  wasteType: string,
-  pointsEarned: number
-) => `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      background-color: #ffffff; 
-      padding: 20px;
-      line-height: 1.6;
-    }
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-      background: white;
-      padding: 40px;
-      border-radius: 8px;
-      box-shadow: 0 0 0 1px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .button {
-      display: inline-block;
-      background: #000000;
-      color: white;
-      padding: 12px 30px;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 500;
-    }
-    h2 {
-      color: #000000;
-      margin-top: 0;
-      font-weight: 600;
-    }
-    .points-box {
-      background: #f8f8f8;
-      padding: 25px;
-      border-radius: 8px;
-      text-align: center;
-      margin: 25px 0;
-      border: 1px solid #e0e0e0;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>Waste Report Verified</h2>
-    <p>Great job, ${userName}!</p>
-    <p>Your <strong>${wasteType}</strong> waste report has been verified by our AI system.</p>
-    <div class="points-box">
-      <div style="font-size: 42px; font-weight: 600; color: #000000;">+${pointsEarned}</div>
-      <div style="color: #666;">Points Earned</div>
-    </div>
-    <p>Keep up the great work in promoting sustainable waste management!</p>
-    <p style="text-align: center;">
-      <a href="http://localhost:3000/dashboard" class="button">
-        View Dashboard
-      </a>
-    </p>
   </div>
 </body>
 </html>
@@ -385,19 +369,24 @@ export const emailVerificationTemplate = (
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.6; 
-      color: #1e293b; 
+      color: #f8fafc;
       margin: 0;
       padding: 0;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    .email-wrapper {
+      width: 100%;
+      padding: 40px 20px;
     }
     .container { 
       max-width: 600px; 
-      margin: 40px auto; 
-      background: white;
+      margin: 0 auto; 
+      background: #1e293b;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -409,51 +398,32 @@ export const emailVerificationTemplate = (
       text-align: center;
       position: relative;
     }
-    .header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></svg>');
-      opacity: 0.1;
-    }
     .header h1 {
       margin: 0;
       font-size: 32px;
       font-weight: 700;
-      position: relative;
-      z-index: 1;
-    }
-    .emoji {
-      font-size: 64px;
-      display: block;
-      margin-bottom: 20px;
-      animation: float 3s ease-in-out infinite;
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-10px); }
+      color: white;
     }
     .content { 
-      padding: 50px 40px; 
-      background: white;
+      padding: 40px 30px; 
+      background: #1e293b;
+      color: #e2e8f0;
     }
     .content h2 {
-      color: #059669;
+      color: #10b981;
       margin-top: 0;
-      font-weight: 700;
-      font-size: 28px;
+      font-weight: 600;
+      font-size: 24px;
     }
     .content p {
-      color: #475569;
+      color: #cbd5e1;
       font-size: 16px;
       line-height: 1.8;
+      margin: 16px 0;
     }
     .verify-box {
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      border: 2px solid #86efac;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
+      border: 2px solid rgba(16, 185, 129, 0.3);
       border-radius: 12px;
       padding: 30px;
       margin: 30px 0;
@@ -461,7 +431,7 @@ export const emailVerificationTemplate = (
     }
     .verify-box p {
       margin: 0 0 20px 0;
-      color: #166534;
+      color: #a7f3d0;
       font-weight: 600;
       font-size: 15px;
     }
@@ -475,123 +445,151 @@ export const emailVerificationTemplate = (
       font-weight: 600;
       font-size: 16px;
       box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
-      transition: all 0.3s ease;
-      border: none;
-      cursor: pointer;
-    }
-    .button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(5, 150, 105, 0.6);
     }
     .info-box {
-      background: #f8fafc;
-      border-left: 4px solid #94a3b8;
+      background: rgba(51, 65, 85, 0.5);
+      border-left: 4px solid #64748b;
       padding: 20px;
       margin: 25px 0;
       border-radius: 8px;
+      color: #cbd5e1;
     }
-    .info-box p {
+    .feature-list {
+      margin: 20px 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feature-list li {
+      padding: 10px 0 10px 28px;
+      position: relative;
+      color: #cbd5e1;
+      font-size: 15px;
+    }
+    .feature-list li:before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .warning-box {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 12px;
+    }
+    .warning-box p {
       margin: 0;
-      color: #475569;
+      color: #fde68a;
       font-size: 14px;
     }
-    .footer { 
-      text-align: center; 
-      padding: 40px 30px; 
-      font-size: 13px; 
-      color: #94a3b8; 
-      background: #f8fafc;
-      border-top: 1px solid #e2e8f0;
+    .warning-box strong {
+      color: #fbbf24;
     }
-    .footer a {
-      color: #059669;
-      text-decoration: none;
+    .link-box {
+      background: rgba(15, 23, 42, 0.7);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      word-break: break-all;
+      font-size: 13px;
+      color: #94a3b8;
+      font-family: 'Courier New', monospace;
     }
     .divider {
       height: 1px;
-      background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+      background: linear-gradient(to right, transparent, #334155, transparent);
       margin: 30px 0;
     }
-    .security-note {
-      background: #fef3c7;
-      border: 1px solid #fbbf24;
-      border-radius: 8px;
-      padding: 15px;
-      margin: 20px 0;
+    .footer { 
+      text-align: center; 
+      padding: 30px; 
+      font-size: 13px; 
+      color: #64748b; 
+      background: #0f172a;
+      border-top: 1px solid #334155;
     }
-    .security-note p {
-      margin: 0;
-      color: #92400e;
-      font-size: 14px;
+    .footer p {
+      margin: 8px 0;
+      color: #64748b;
+    }
+    .footer strong {
+      color: #10b981;
+    }
+    .footer a {
+      color: #10b981;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <span class="emoji">✉️</span>
-      <h1>Verify Your Email</h1>
-    </div>
-    
-    <div class="content">
-      <h2>Hello ${userName}! 👋</h2>
-      <p>
-        Thank you for signing up for <strong>BinBuddy</strong>! We're excited to have you join our 
-        community of environmental champions making waste management smarter and more sustainable.
-      </p>
+  <div class="email-wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>Verify Your Email</h1>
+      </div>
       
-      <div class="verify-box">
-        <p>Click the button below to verify your email and activate your account:</p>
-        <a href="${verificationUrl}" class="button">
-          ✓ Verify My Email
-        </a>
-      </div>
-
-      <div class="divider"></div>
-
-      <p style="font-size: 15px; color: #64748b;">
-        <strong>What happens after verification?</strong>
-      </p>
-      <ul style="color: #475569; padding-left: 20px;">
-        <li>Full access to your personalized dashboard</li>
-        <li>Start reporting waste and earning points</li>
-        <li>Join community leaderboards</li>
-        <li>Unlock achievement badges</li>
-      </ul>
-
-      <div class="security-note">
+      <div class="content">
+        <h2>Hello ${userName},</h2>
         <p>
-          <strong>⏰ This link expires in 24 hours</strong><br>
-          For security reasons, this verification link will only be valid for 24 hours.
+          Thank you for signing up for <strong>BinBuddy</strong>! We're excited to have you join our 
+          community of environmental champions making waste management smarter and more sustainable 
+          through volunteer-driven verification.
         </p>
-      </div>
+        
+        <div class="verify-box">
+          <p>Click the button below to verify your email and activate your account:</p>
+          <a href="${verificationUrl}" class="button">
+            Verify My Email
+          </a>
+        </div>
 
-      <div class="info-box">
-        <p>
-          <strong>Didn't create an account?</strong><br>
-          If you didn't sign up for BinBuddy, you can safely ignore this email. 
-          No account will be created without verification.
+        <div class="divider"></div>
+
+        <p style="font-size: 15px; color: #cbd5e1; font-weight: 600;">
+          What happens after verification?
         </p>
+        <ul class="feature-list">
+          <li>Full access to your personalized dashboard</li>
+          <li>Start reporting waste and earning points through community verification</li>
+          <li>Join community leaderboards and connect with volunteers</li>
+          <li>Unlock achievement badges and build your reputation</li>
+        </ul>
+
+        <div class="warning-box">
+          <p>
+            <strong>This link expires in 24 hours</strong><br><br>
+            For security reasons, this verification link will only be valid for 24 hours. 
+            If it expires, you can request a new verification email from the login page.
+          </p>
+        </div>
+
+        <div class="info-box">
+          <p>
+            <strong>Didn't create an account?</strong><br><br>
+            If you didn't sign up for BinBuddy, you can safely ignore this email. 
+            No account will be created without verification.
+          </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <p style="font-size: 14px; color: #94a3b8;">
+          If the button doesn't work, copy and paste this link into your browser:
+        </p>
+        <div class="link-box">${verificationUrl}</div>
       </div>
-
-      <div class="divider"></div>
-
-      <p style="font-size: 14px; color: #94a3b8;">
-        If the button doesn't work, copy and paste this link into your browser:<br>
-        <a href="${verificationUrl}" style="color: #059669; word-break: break-all;">${verificationUrl}</a>
-      </p>
-    </div>
-    
-    <div class="footer">
-      <p style="margin: 0 0 10px 0;">
-        <strong style="color: #059669;">BinBuddy</strong> - Smart Waste Segregation & Management
-      </p>
-      <p style="margin: 0; color: #cbd5e1;">
-        Need help? Contact us at <a href="mailto:support@binbuddy.com">support@binbuddy.com</a>
-      </p>
-      <p style="margin: 15px 0 0 0; color: #cbd5e1;">
-        &copy; 2025 BinBuddy. All rights reserved.
-      </p>
+      
+      <div class="footer">
+        <p><strong>BinBuddy</strong> – Smart Waste Segregation & Management</p>
+        <p>Community-Driven Verification | Environmental Impact Tracking</p>
+        <p style="margin-top: 10px;">
+          Need help? Contact us at <a href="mailto:support@binbuddy.com">support@binbuddy.com</a>
+        </p>
+        <p style="margin-top: 15px;">&copy; 2025 BinBuddy. All rights reserved.</p>
+      </div>
     </div>
   </div>
 </body>

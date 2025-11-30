@@ -44,6 +44,10 @@ export default function LoginForm() {
       setSuccessMessage(
         "Password reset successfully! You can now log in with your new password."
       );
+    } else if (message === "signup_success") {
+      setSuccessMessage(
+        "Account created successfully! Please check your email inbox or spam folder to verify your account before logging in."
+      );
     } else if (urlError === "invalid_token") {
       setError(
         "Invalid verification link. The token was not found in our system."
