@@ -20,6 +20,8 @@ model User {
   passwordResetToken      String?           @unique
   passwordResetExpiry     DateTime?
   volunteerRequest        VolunteerRequest?
+  assignments             Assignment[]      @relation("VolunteerAssignments")
+  verifications           Verification[]    @relation("VolunteerVerifications")
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
   role                    Role              @default(user)
@@ -71,11 +73,15 @@ model Report {
   reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
   // Verification
-  status          ReportStatus @default(PENDING)
+  status          ReportStatus   @default(PENDING)
   verifiedAt      DateTime?
   verifiedBy      String?
   rejectionReason String?
   remarks         String?
+  assignments     Assignment[]
+  verifications   Verification[]
+  priority        Int            @default(5)
+  assignedCount   Int            @default(0)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -160,4 +166,44 @@ enum VolunteerRequestStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+model Assignment {
+  id          String           @id @default(cuid())
+  reportId    String
+  volunteerId String
+  assignedAt  DateTime         @default(now())
+  viewedAt    DateTime?
+  completedAt DateTime?
+  status      AssignmentStatus @default(PENDING)
+
+  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  volunteer User   @relation("VolunteerAssignments", fields: [volunteerId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, volunteerId])
+  @@index([volunteerId, status])
+  @@index([reportId, status])
+}
+
+model Verification {
+  id               String       @id @default(cuid())
+  reportId         String
+  volunteerId      String
+  decision         ReportStatus
+  verificationNote String?
+  createdAt        DateTime     @default(now())
+
+  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  volunteer User   @relation("VolunteerVerifications", fields: [volunteerId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, volunteerId])
+  @@index([reportId])
+}
+
+enum AssignmentStatus {
+  PENDING
+  VIEWED
+  COMPLETED
+  SKIPPED
+  EXPIRED
 }
