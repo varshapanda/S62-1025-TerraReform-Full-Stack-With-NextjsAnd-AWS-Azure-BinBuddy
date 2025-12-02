@@ -1,7 +1,7 @@
-// app/api/admin/volunteer-requests/[id]/route.ts
-
+// src/app/api/admin/volunteer-requests/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { assignmentManager } from "@/lib/assignment/redisManager"; // import the instance
 
 type Params = {
   params: {
@@ -12,7 +12,7 @@ type Params = {
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const userRole = req.headers.get("x-user-role");
-    const adminId = req.headers.get("x-user-id");
+    const adminId = req.headers.get("x-user-id") ?? null;
 
     if (userRole?.toLowerCase() !== "admin") {
       return NextResponse.json(
@@ -21,8 +21,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       );
     }
 
-    // FIX: Await the params Promise
-    const { id } = await params;
+    const { id } = params;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Missing request id." },
+        { status: 400 }
+      );
+    }
+
     const body = await req.json();
     const { action, notes } = body;
 
@@ -33,8 +39,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       );
     }
 
-    // Convert string ID to number for VolunteerRequest
-    const requestId = parseInt(id);
+    const requestId = parseInt(id, 10);
+    if (Number.isNaN(requestId)) {
+      return NextResponse.json(
+        { error: "Invalid request id." },
+        { status: 400 }
+      );
+    }
 
     const volunteerRequest = await prisma.volunteerRequest.findUnique({
       where: { id: requestId },
@@ -57,8 +68,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const newStatus = action === "approve" ? "APPROVED" : "REJECTED";
 
-    const result = await prisma.$transaction(async (tx) => {
-      const updatedRequest = await tx.volunteerRequest.update({
+    // Update DB + Register in Redis atomically
+    const updatedRequest = await prisma.$transaction(async (tx) => {
+      const r = await tx.volunteerRequest.update({
         where: { id: requestId },
         data: {
           status: newStatus,
@@ -75,14 +87,43 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         });
       }
 
-      return updatedRequest;
+      return r;
     });
+
+    // CRITICAL: Register volunteer AFTER DB commit succeeds
+    if (action === "approve") {
+      try {
+        await assignmentManager.registerVolunteer(volunteerRequest.userId);
+        console.log(`Registered volunteer ${volunteerRequest.userId} in Redis`);
+
+        // AUTO-ASSIGN EXISTING PENDING REPORTS
+        const pendingReports = await prisma.report.findMany({
+          where: {
+            status: "PENDING",
+            assignedCount: { lt: 3 }, // Only if not fully assigned
+          },
+          select: { id: true },
+          take: 5, // Assign first 5 reports
+        });
+
+        console.log(
+          `Found ${pendingReports.length} reports to assign to new volunteer`
+        );
+
+        for (const report of pendingReports) {
+          await assignReportToVolunteers(report.id);
+        }
+      } catch (err) {
+        console.error("Failed to register volunteer in Redis:", err);
+        // Don't rollback DB - user is still a volunteer
+      }
+    }
 
     return NextResponse.json(
       {
         success: true,
         message: `Volunteer request ${action}d successfully.`,
-        data: { request: result },
+        data: { request: updatedRequest },
       },
       { status: 200 }
     );
@@ -106,11 +147,21 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       );
     }
 
-    // FIX: Await the params Promise
-    const { id } = await params;
+    const { id } = params;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Missing request id." },
+        { status: 400 }
+      );
+    }
 
-    // Convert string ID to number for VolunteerRequest
-    const requestId = parseInt(id);
+    const requestId = parseInt(id, 10);
+    if (Number.isNaN(requestId)) {
+      return NextResponse.json(
+        { error: "Invalid request id." },
+        { status: 400 }
+      );
+    }
 
     await prisma.volunteerRequest.delete({
       where: { id: requestId },

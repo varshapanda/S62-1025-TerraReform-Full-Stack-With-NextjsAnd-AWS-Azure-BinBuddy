@@ -99,7 +99,7 @@ export const useVolunteerStore = create<VolunteerState>((set, get) => ({
 
   fetchStats: async () => {
     try {
-      const response = await fetch("/api/volunteers/stats");
+      const response = await fetch("/api/volunteer/stats");
       const result = await response.json();
 
       if (result.success) {
@@ -114,8 +114,9 @@ export const useVolunteerStore = create<VolunteerState>((set, get) => ({
     set({ loading: true });
     try {
       const { pendingPagination } = get();
+      // 🎯 Changed from /pending to /queue
       const response = await fetch(
-        `/api/volunteers/reports/pending?page=${page}&limit=${pendingPagination.limit}`
+        `/api/volunteer/queue?page=${page}&limit=${pendingPagination.limit}`
       );
       const result = await response.json();
 
@@ -127,7 +128,7 @@ export const useVolunteerStore = create<VolunteerState>((set, get) => ({
         });
       }
     } catch (error) {
-      console.error("Failed to fetch pending reports:", error);
+      console.error("Failed to fetch assigned reports:", error);
       set({ loading: false });
     }
   },
@@ -137,7 +138,7 @@ export const useVolunteerStore = create<VolunteerState>((set, get) => ({
     try {
       const { historyPagination } = get();
       const response = await fetch(
-        `/api/volunteers/history?status=${status}&page=${page}&limit=${historyPagination.limit}`
+        `/api/volunteer/history?status=${status}&page=${page}&limit=${historyPagination.limit}`
       );
       const result = await response.json();
 
@@ -163,7 +164,7 @@ export const useVolunteerStore = create<VolunteerState>((set, get) => ({
   verifyReport: async (reportId, status, note) => {
     set({ isVerifying: true });
     try {
-      const response = await fetch("/api/volunteers/reports/verify", {
+      const response = await fetch("/api/volunteer/reports/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

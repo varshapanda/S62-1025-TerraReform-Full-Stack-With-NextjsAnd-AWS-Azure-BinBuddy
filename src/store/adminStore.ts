@@ -42,6 +42,7 @@ interface AdminState {
   // Actions
   fetchUsers: () => Promise<void>;
   updateUserRole: (userId: number, newRole: string) => Promise<void>;
+  deleteUser: (userId: number) => Promise<void>; //
   fetchVolunteerRequests: (status?: string) => Promise<void>;
   handleVolunteerAction: (
     requestId: number,
@@ -105,6 +106,24 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       get().showMessage("error", "Error updating role");
     } finally {
       set({ updating: null });
+    }
+  },
+  deleteUser: async (userId: number) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        get().showMessage("success", "User deleted successfully");
+        get().fetchUsers(); // Refresh list
+      } else {
+        const data = await response.json();
+        get().showMessage("error", data.message || "Failed to delete user");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      get().showMessage("error", "Error deleting user");
     }
   },
 

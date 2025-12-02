@@ -2,107 +2,151 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { verifyToken } from "@/lib/auth";
-import { reportVerificationSchema } from "@/lib/validation/volunteerSchemas";
-import { ERROR_CODES } from "@/lib/errorCodes";
-import { ZodError } from "zod";
+import { assignmentManager } from "@/lib/assignment/redisManager";
+import { realtimeEmitter } from "@/lib/realtime/eventEmitter";
+
+const VERIFICATION_THRESHOLD = 1;
 
 export async function POST(req: NextRequest) {
   try {
-    // Verify authentication and role
     const { success, user } = verifyToken(req);
     if (!success || !user || user.role !== "volunteer") {
-      return sendError(
-        "Unauthorized - insufficient permissions",
-        ERROR_CODES.AUTH_ERROR,
-        401
-      );
+      return sendError("Unauthorized", "AUTH_ERROR", 401);
     }
 
     const body = await req.json();
-    const validated = reportVerificationSchema.parse(body);
+    const { reportId, status, verificationNote } = body;
 
-    // Check if report exists and is pending
-    const report = await prisma.report.findUnique({
-      where: { id: validated.reportId },
-    });
-
-    if (!report) {
-      return sendError("Report not found", ERROR_CODES.NOT_FOUND, 404);
+    if (!reportId || !["VERIFIED", "REJECTED"].includes(status)) {
+      return sendError("Invalid request", "VALIDATION_ERROR", 400);
     }
 
-    if (report.status !== "PENDING") {
+    // Check Redis assignment first (fast)
+    const isAssigned = await assignmentManager.isAssigned(reportId, user.id);
+    if (!isAssigned) {
       return sendError(
-        "Report already verified",
-        ERROR_CODES.VALIDATION_ERROR,
-        409
+        "You are not assigned to this report",
+        "AUTH_ERROR",
+        403
       );
     }
 
-    // Update report status and create verification record
-    const updatedReport = await prisma.report.update({
-      where: { id: validated.reportId },
-      data: {
-        status: validated.status,
-        verifiedBy: String(user.id),
-        verifiedAt: new Date(),
-        remarks: validated.verificationNote,
-        rejectionReason:
-          validated.status === "REJECTED" ? validated.verificationNote : null,
-      },
-      include: {
-        reporter: {
-          select: {
-            email: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    // Award points to volunteer for verification (5 points per verification)
-    if (validated.status === "VERIFIED") {
-      await prisma.user.update({
-        where: { id: String(user.id) },
-        data: {
-          points: {
-            increment: 5,
-          },
+    // Atomic transaction for verification
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Check assignment
+      const assignment = await tx.assignment.findUnique({
+        where: {
+          reportId_volunteerId: { reportId, volunteerId: user.id },
         },
       });
 
-      // Create reward record
-      await prisma.reward.create({
-        data: {
-          userId: String(user.id),
-          points: 5,
-          action: "REPORT_VERIFICATION",
-          description: `Verified report ${validated.reportId}`,
+      if (!assignment) throw new Error("Assignment not found");
+      if (assignment.status === "COMPLETED")
+        throw new Error("Already verified");
+
+      // 2. Check report status
+      const report = await tx.report.findUnique({ where: { id: reportId } });
+      if (!report || report.status !== "PENDING")
+        throw new Error("Report no longer pending");
+
+      // 3. Check duplicate verification
+      const existing = await tx.verification.findUnique({
+        where: {
+          reportId_volunteerId: { reportId, volunteerId: user.id },
         },
       });
-    }
+      if (existing) throw new Error("Already verified");
 
-    return sendSuccess(
-      updatedReport,
-      `Report ${validated.status.toLowerCase()} successfully`
-    );
-  } catch (error: unknown) {
-    if (error instanceof ZodError) {
-      return sendError(
-        error.issues[0]?.message || "Validation failed",
-        ERROR_CODES.VALIDATION_ERROR,
-        400,
-        error.issues
-      );
-    }
+      // 4. Create verification
+      await tx.verification.create({
+        data: {
+          reportId,
+          volunteerId: user.id,
+          decision: status,
+          verificationNote: verificationNote?.trim() || null,
+        },
+      });
 
-    console.error("Report verification error:", error);
-    return sendError(
-      "Failed to verify report",
-      ERROR_CODES.DATABASE_FAILURE,
-      500,
-      {
-        originalError: (error as Error)?.message ?? String(error),
+      // 5. Update assignment
+      await tx.assignment.update({
+        where: {
+          reportId_volunteerId: { reportId, volunteerId: user.id },
+        },
+        data: {
+          status: "COMPLETED",
+          completedAt: new Date(),
+        },
+      });
+
+      // 6. Count verifications
+      const count = await tx.verification.count({
+        where: { reportId, decision: status },
+      });
+
+      let thresholdReached = false;
+
+      // 7. If threshold reached, finalize
+      if (count >= VERIFICATION_THRESHOLD) {
+        await tx.report.update({
+          where: { id: reportId },
+          data: {
+            status,
+            verifiedAt: new Date(),
+            verifiedBy: user.id,
+            remarks: status === "VERIFIED" ? verificationNote : null,
+            rejectionReason: status === "REJECTED" ? verificationNote : null,
+          },
+        });
+
+        // Expire other assignments
+        await tx.assignment.updateMany({
+          where: {
+            reportId,
+            status: { in: ["PENDING", "VIEWED"] },
+          },
+          data: { status: "EXPIRED" },
+        });
+
+        thresholdReached = true;
       }
-    );
+
+      return { count, thresholdReached };
+    });
+
+    // Update Redis
+    await assignmentManager.completeAssignment(reportId, user.id);
+
+    // Broadcast real-time updates
+    if (result.thresholdReached) {
+      const affectedVolunteers = await assignmentManager.expireReport(reportId);
+
+      realtimeEmitter.notifyMultiple(affectedVolunteers, {
+        type: "report_verified",
+        data: { reportId, status },
+        timestamp: Date.now(),
+      });
+
+      console.log(
+        `Report ${reportId} ${status} - notified ${affectedVolunteers.length} volunteers`
+      );
+    }
+
+    return sendSuccess({
+      verified: true,
+      count: result.count,
+      thresholdReached: result.thresholdReached,
+      status: result.thresholdReached ? status : "PENDING",
+    });
+  } catch (error: unknown) {
+    console.error("Verification error:", error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "Verification failed";
+
+    return sendError(message, "VERIFICATION_ERROR", 400);
   }
 }

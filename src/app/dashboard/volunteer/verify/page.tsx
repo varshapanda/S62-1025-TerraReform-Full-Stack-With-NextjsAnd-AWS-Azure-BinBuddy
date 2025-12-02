@@ -1,8 +1,10 @@
 "use client";
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import { useVolunteerStore } from "@/store/volunteerStore";
+import { useRealtimeAssignments } from "@/hooks/useRealtimeAssignments";
 
 export default function VerifyReportsPage() {
   const router = useRouter();
@@ -20,9 +22,23 @@ export default function VerifyReportsPage() {
     resetVerificationState,
   } = useVolunteerStore();
 
+  const { connected } = useRealtimeAssignments(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    (reportId) => {
+      console.log("📨 New report assigned");
+      fetchPendingReports();
+    },
+    (reportId) => {
+      console.log("Report verified, removing from queue");
+      useVolunteerStore.setState((state) => ({
+        pendingReports: state.pendingReports.filter((r) => r.id !== reportId),
+      }));
+    }
+  );
+
   useEffect(() => {
     fetchPendingReports();
-  }, []);
+  }, [fetchPendingReports]);
 
   const handleVerify = async (status: "VERIFIED" | "REJECTED") => {
     if (!selectedReport) return;
@@ -70,6 +86,18 @@ export default function VerifyReportsPage() {
 
   return (
     <DashboardLayout role="volunteer">
+      <div className="mb-4">
+        {connected ? (
+          <div className="text-green-400 text-sm flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            Live updates active
+          </div>
+        ) : (
+          <div className="text-amber-400 text-sm">
+            Connecting to live updates...
+          </div>
+        )}
+      </div>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>

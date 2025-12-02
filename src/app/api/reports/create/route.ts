@@ -4,6 +4,7 @@ import { reportCreationSchema } from "@/lib/validation/reportSchema";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { verifyToken } from "@/lib/auth";
 import { ZodError } from "zod";
+import { assignReportToVolunteers } from "@/lib/workers/assignmentWorker";
 
 export async function POST(req: NextRequest) {
   try {
@@ -85,6 +86,9 @@ export async function POST(req: NextRequest) {
 
     // TODO: Enqueue verification job (BullMQ)
     // await verificationQueue.add("verify-report", { reportId: report.id });
+    assignReportToVolunteers(report.id).catch((err) => {
+      console.error("Assignment failed for report", report.id, err);
+    });
 
     return sendSuccess(completeReport, "Report created successfully", 201);
   } catch (error: unknown) {

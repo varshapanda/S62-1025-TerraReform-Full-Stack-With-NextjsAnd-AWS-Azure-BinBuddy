@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { User, Shield, AlertCircle, CheckCircle } from "lucide-react";
+import { User, Shield, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
 import { useAdminStore } from "@/store/adminStore";
 
 export default function UserManagement() {
-  const { users, loading, updating, message, fetchUsers, updateUserRole } =
-    useAdminStore();
+  const {
+    users,
+    loading,
+    updating,
+    message,
+    fetchUsers,
+    updateUserRole,
+    deleteUser, // ← Added
+  } = useAdminStore();
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const getRoleBadgeColor = (role: string) => {
     const colors: Record<string, string> = {
@@ -20,6 +27,19 @@ export default function UserManagement() {
       admin: "bg-purple-500/10 text-purple-400 border-purple-500/30",
     };
     return colors[role.toLowerCase()] || colors.user;
+  };
+
+  // ← Added delete handler
+  const handleDelete = (userId: number, userName: string, userRole: string) => {
+    const confirmMessage = `⚠️ Delete user "${userName}"?\n\nThis will:\n- Remove from database\n- ${
+      userRole === "volunteer"
+        ? "Remove from Redis (volunteer system)"
+        : "Delete all user data"
+    }\n- Delete all their reports & assignments\n\nThis action CANNOT be undone!`;
+
+    if (confirm(confirmMessage)) {
+      deleteUser(userId);
+    }
   };
 
   if (loading) {
@@ -63,6 +83,9 @@ export default function UserManagement() {
                   Email
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">
+                  Location
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">
                   Points
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">
@@ -70,6 +93,9 @@ export default function UserManagement() {
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">
                   Change Role
+                </th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -87,7 +113,16 @@ export default function UserManagement() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-400">{user.email}</td>
-                  <td className="px-6 py-4 text-white">{user.points}</td>
+                  <td className="px-6 py-4 text-slate-400">
+                    {user.city && user.state
+                      ? `${user.city}, ${user.state}`
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-emerald-400 font-semibold">
+                      {user.points}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     <span
                       className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border capitalize ${getRoleBadgeColor(
@@ -110,6 +145,23 @@ export default function UserManagement() {
                       <option value="authority">Authority</option>
                       <option value="admin">Admin</option>
                     </select>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() =>
+                          handleDelete(user.id, user.name, user.role)
+                        }
+                        disabled={updating === user.id}
+                        className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete user"
+                      >
+                        <Trash2
+                          size={18}
+                          className="group-hover:scale-110 transition"
+                        />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
