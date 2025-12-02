@@ -33,8 +33,65 @@ model User {
   reports                 Report[]
   rewards                 Reward[]
 
+  // Authority-specific fields
+  baseLat                 Float?
+  baseLng                 Float?
+  serviceRadius           Int?      @default(10)  // in km
+  vehicleType             VehicleType?
+  maxTasksPerDay          Int?      @default(10)
+  tasksCompleted          Int       @default(0)
+  completionRate          Float     @default(0)
+  avgCompletionTime       Int?      // in minutes
+  isProfileComplete       Boolean   @default(false)
+  
+  // Relations
+  serviceAreas            AuthorityServiceArea[]
+  assignedTasks           Task[]    @relation("AssignedTasks")
+
   @@index([email])
   @@index([points])
+}
+
+model AuthorityServiceArea {
+  id          String    @id @default(cuid())
+  authorityId String
+  authority   User      @relation(fields: [authorityId], references: [id], onDelete: Cascade)
+  city        String
+  state       String
+  locality    String
+  priority    Int       @default(1)  // 1 = primary, 2 = secondary
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([authorityId])
+  @@index([city, state])
+}
+model Task {
+  id              String    @id @default(cuid())
+  reportId        String    @unique
+  report          Report    @relation(fields: [reportId], references: [id])
+  assignedToId    String?   // Authority ID
+  assignedTo      User?     @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  status          TaskStatus @default(PENDING)
+  priority        Priority  @default(MEDIUM)
+  scheduledFor    DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  location        Json?     // {lat, lng, address}
+  collectionProof String[]  // Image URLs
+  notes           String?
+  estimatedTime   Int?      // in minutes
+  actualTime      Int?      // in minutes
+  
+  // Task metadata
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([assignedToId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([priority])
 }
 
 model RefreshToken {
@@ -89,6 +146,7 @@ model Report {
 
   // Relations
   images Image[]
+task Task?
 
   @@index([reporterId])
   @@index([status])
@@ -206,4 +264,28 @@ enum AssignmentStatus {
   COMPLETED
   SKIPPED
   EXPIRED
+}
+
+enum VehicleType {
+  BIKE
+  AUTO
+  SMALL_TRUCK
+  TRUCK
+  OTHER
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
 }
