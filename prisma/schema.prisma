@@ -48,6 +48,17 @@ model User {
   @@index([points])
 }
 
+model UserLeaderboard {
+  userId    String   @id
+  points    Int      @default(0)
+  rank      Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([points])
+}
+
 model AuthorityServiceArea {
   id          String   @id @default(cuid())
   authorityId String
@@ -96,7 +107,8 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime  @default(now())
   revokedAt DateTime?
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -144,7 +156,8 @@ model Reward {
   action      String
   description String
   createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -157,7 +170,8 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([read])
@@ -185,8 +199,9 @@ model Image {
   uploadedBy String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  report     Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  user       User?    @relation(fields: [uploadedBy], references: [id])
+
+  report Report? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [uploadedBy], references: [id])
 
   @@index([reportId])
   @@index([uploadedBy])
