@@ -8,47 +8,41 @@ datasource db {
 }
 
 model User {
-  id                      String            @id @default(cuid())
+  id                      String                 @id @default(cuid())
   name                    String
-  email                   String            @unique
+  email                   String                 @unique
   password                String?
-  googleId                String?           @unique
-  points                  Int               @default(0)
-  emailVerified           Boolean           @default(false)
-  verificationToken       String?           @unique
-  verificationTokenExpiry DateTime?
-  passwordResetToken      String?           @unique
-  passwordResetExpiry     DateTime?
-  volunteerRequest        VolunteerRequest?
-  assignments             Assignment[]      @relation("VolunteerAssignments")
-  verifications           Verification[]    @relation("VolunteerVerifications")
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
-  role                    Role              @default(user)
+  googleId                String?                @unique
+  points                  Int                    @default(0)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  role                    Role                   @default(user)
   city                    String?
   state                   String?
+  emailVerified           Boolean                @default(false)
+  verificationToken       String?                @unique
+  verificationTokenExpiry DateTime?
+  passwordResetExpiry     DateTime?
+  passwordResetToken      String?                @unique
+  avgCompletionTime       Int?
+  baseLat                 Float?
+  baseLng                 Float?
+  completionRate          Float                  @default(0)
+  isProfileComplete       Boolean                @default(false)
+  maxTasksPerDay          Int?                   @default(10)
+  serviceRadius           Int?                   @default(10)
+  tasksCompleted          Int                    @default(0)
+  vehicleType             VehicleType?
+  assignments             Assignment[]           @relation("VolunteerAssignments")
+  serviceAreas            AuthorityServiceArea[]
   images                  Image[]
   notifications           Notification[]
   refreshTokens           RefreshToken[]
   reports                 Report[]
   rewards                 Reward[]
-
-  // Authority-specific fields
-  baseLat           Float?
-  baseLng           Float?
-  serviceRadius     Int?         @default(10)
-  vehicleType       VehicleType?
-  maxTasksPerDay    Int?         @default(10)
-  tasksCompleted    Int          @default(0)
-  completionRate    Float        @default(0)
-  avgCompletionTime Int?
-  isProfileComplete Boolean      @default(false)
-
-  // Relations
-  serviceAreas  AuthorityServiceArea[]
-  assignedTasks Task[]                 @relation("AssignedTasks")
-
-  leaderboard UserLeaderboard? // ✅ ADDED REQUIRED RELATION
+  assignedTasks           Task[]                 @relation("AssignedTasks")
+  verifications           Verification[]         @relation("VolunteerVerifications")
+  volunteerRequest        VolunteerRequest?
 
   @@index([email])
   @@index([points])
@@ -66,41 +60,40 @@ model UserLeaderboard {
 }
 
 model AuthorityServiceArea {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   authorityId String
-  authority   User      @relation(fields: [authorityId], references: [id], onDelete: Cascade)
   city        String
   state       String
   locality    String
-  priority    Int       @default(1)  // 1 = primary, 2 = secondary
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  priority    Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  authority   User     @relation(fields: [authorityId], references: [id], onDelete: Cascade)
+
   @@index([authorityId])
   @@index([city, state])
 }
+
 model Task {
-  id              String    @id @default(cuid())
-  reportId        String    @unique
-  report          Report    @relation(fields: [reportId], references: [id])
-  assignedToId    String?   // Authority ID
-  assignedTo      User?     @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  id              String     @id @default(cuid())
+  reportId        String     @unique
+  assignedToId    String?
   status          TaskStatus @default(PENDING)
-  priority        Priority  @default(MEDIUM)
+  priority        Priority   @default(MEDIUM)
   scheduledFor    DateTime?
   startedAt       DateTime?
   completedAt     DateTime?
   cancelledAt     DateTime?
-  location        Json?     // {lat, lng, address}
-  collectionProof String[]  // Image URLs
+  location        Json?
+  collectionProof String[]
   notes           String?
-  estimatedTime   Int?      // in minutes
-  actualTime      Int?      // in minutes
-  
-  // Task metadata
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  estimatedTime   Int?
+  actualTime      Int?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  assignedTo      User?      @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  report          Report     @relation(fields: [reportId], references: [id])
+
   @@index([assignedToId])
   @@index([status])
   @@index([scheduledFor])
@@ -122,45 +115,35 @@ model RefreshToken {
 }
 
 model Report {
-  id        String  @id @default(cuid())
-  imageUrl  String
-  imageHash String? @unique
-  category  String
-  note      String?
-  lat       Float
-  lng       Float
-
-  // Address fields
-  address  String?
-  houseNo  String?
-  street   String?
-  locality String?
-  city     String?
-  state    String?
-  pincode  String?
-
-  // Reporter info
-  reporterId String
-  reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-
-  // Verification
-  status          ReportStatus   @default(PENDING)
-  verifiedAt      DateTime?
-  verifiedBy      String?
+  id              String         @id @default(cuid())
+  imageUrl        String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  category        String
+  imageHash       String?        @unique
+  lat             Float
+  lng             Float
+  note            String?
+  reporterId      String
   rejectionReason String?
   remarks         String?
-  assignments     Assignment[]
-  verifications   Verification[]
-  priority        Int            @default(5)
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  status          ReportStatus   @default(PENDING)
+  address         String?
+  city            String?
+  houseNo         String?
+  locality        String?
+  pincode         String?
+  state           String?
+  street          String?
   assignedCount   Int            @default(0)
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  images Image[]
-task Task?
+  priority        Int            @default(5)
+  assignments     Assignment[]
+  images          Image[]
+  reporter        User           @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  task            Task?
+  verifications   Verification[]
 
   @@index([reporterId])
   @@index([status])
@@ -197,7 +180,6 @@ model Notification {
 model VolunteerRequest {
   id          Int                    @id @default(autoincrement())
   userId      String                 @unique
-  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   status      VolunteerRequestStatus @default(PENDING)
   requestedAt DateTime               @default(now())
   reviewedAt  DateTime?
@@ -205,6 +187,7 @@ model VolunteerRequest {
   reviewNotes String?
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("volunteer_requests")
 }
@@ -224,6 +207,36 @@ model Image {
   @@index([uploadedBy])
 }
 
+model Assignment {
+  id          String           @id @default(cuid())
+  reportId    String
+  volunteerId String
+  assignedAt  DateTime         @default(now())
+  viewedAt    DateTime?
+  completedAt DateTime?
+  status      AssignmentStatus @default(PENDING)
+  report      Report           @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  volunteer   User             @relation("VolunteerAssignments", fields: [volunteerId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, volunteerId])
+  @@index([volunteerId, status])
+  @@index([reportId, status])
+}
+
+model Verification {
+  id               String       @id @default(cuid())
+  reportId         String
+  volunteerId      String
+  decision         ReportStatus
+  verificationNote String?
+  createdAt        DateTime     @default(now())
+  report           Report       @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  volunteer        User         @relation("VolunteerVerifications", fields: [volunteerId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, volunteerId])
+  @@index([reportId])
+}
+
 enum Role {
   user
   admin
@@ -241,38 +254,6 @@ enum VolunteerRequestStatus {
   PENDING
   APPROVED
   REJECTED
-}
-
-model Assignment {
-  id          String           @id @default(cuid())
-  reportId    String
-  volunteerId String
-  assignedAt  DateTime         @default(now())
-  viewedAt    DateTime?
-  completedAt DateTime?
-  status      AssignmentStatus @default(PENDING)
-
-  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  volunteer User   @relation("VolunteerAssignments", fields: [volunteerId], references: [id], onDelete: Cascade)
-
-  @@unique([reportId, volunteerId])
-  @@index([volunteerId, status])
-  @@index([reportId, status])
-}
-
-model Verification {
-  id               String       @id @default(cuid())
-  reportId         String
-  volunteerId      String
-  decision         ReportStatus
-  verificationNote String?
-  createdAt        DateTime     @default(now())
-
-  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  volunteer User   @relation("VolunteerVerifications", fields: [volunteerId], references: [id], onDelete: Cascade)
-
-  @@unique([reportId, volunteerId])
-  @@index([reportId])
 }
 
 enum AssignmentStatus {
