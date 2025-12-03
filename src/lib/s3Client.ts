@@ -13,11 +13,21 @@ const s3Client = new S3Client({
   },
 });
 
+// Add this helper function
+function sanitizeFilename(filename: string): string {
+  return filename
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/[^a-zA-Z0-9.-]/g, "") // Remove special characters except . and -
+    .toLowerCase(); // Optional: convert to lowercase for consistency
+}
+
 export async function generatePresignedUrl(
   filename: string,
   contentType: string
 ): Promise<string> {
-  const key = `reports/${Date.now()}-${filename}`;
+  // Sanitize the filename before using it
+  const sanitizedFilename = sanitizeFilename(filename);
+  const key = `reports/${Date.now()}-${sanitizedFilename}`;
 
   const command = new PutObjectCommand({
     Bucket: process.env.AWS_BUCKET_NAME!,

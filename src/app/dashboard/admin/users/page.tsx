@@ -1,5 +1,6 @@
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import UserManagement from "@/components/dashboard/admin/userManagement";
+import MessageToast from "@/components/dashboard/admin/messageToast";
 
 export const metadata = {
   title: "User Management - BinBuddy Admin",
@@ -9,6 +10,7 @@ export const metadata = {
 export default function AdminUsersPage() {
   return (
     <DashboardLayout role="admin">
+      <MessageToast />
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold text-white mb-2">

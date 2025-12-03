@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
+import MessageToast from "@/components/dashboard/admin/messageToast";
 import {
   CheckCircle,
   XCircle,
@@ -69,6 +70,7 @@ export default function VolunteerRequestsPage() {
 
   return (
     <DashboardLayout role="admin">
+      <MessageToast />
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <Link

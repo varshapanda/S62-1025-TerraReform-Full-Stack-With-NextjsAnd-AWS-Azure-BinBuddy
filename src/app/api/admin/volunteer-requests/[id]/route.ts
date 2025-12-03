@@ -9,7 +9,10 @@ type Params = {
   };
 };
 
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const userRole = req.headers.get("x-user-role");
     const adminId = req.headers.get("x-user-id") ?? null;
@@ -21,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       );
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     if (!id) {
       return NextResponse.json(
         { error: "Missing request id." },
@@ -136,7 +139,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: Params) {
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const userRole = req.headers.get("x-user-role");
 
@@ -147,7 +153,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       );
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     if (!id) {
       return NextResponse.json(
         { error: "Missing request id." },
