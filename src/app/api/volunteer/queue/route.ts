@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { verifyToken } from "@/lib/auth";
+import { generateReadPresignedUrl } from "@/lib/s3Client"; // ADDED
 
 export async function GET(req: NextRequest) {
   try {
@@ -52,11 +53,25 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Extract reports
-    const reports = assignments.map((a) => a.report);
+    // Extract reports and generate presigned URLs
+    const reportsWithSignedUrls = await Promise.all(
+      assignments.map(async (assignment) => {
+        const report = assignment.report;
+        return {
+          ...report,
+          imageUrl: await generateReadPresignedUrl(report.imageUrl),
+          images: await Promise.all(
+            report.images.map(async (img) => ({
+              ...img,
+              url: await generateReadPresignedUrl(img.url),
+            }))
+          ),
+        };
+      })
+    );
 
     return sendSuccess({
-      reports,
+      reports: reportsWithSignedUrls,
       pagination: {
         page,
         limit,

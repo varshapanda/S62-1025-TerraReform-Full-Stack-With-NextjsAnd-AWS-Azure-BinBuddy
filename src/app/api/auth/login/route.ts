@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     const accessToken = jwt.sign(
       { id: user.id, email: user.email, role: user.role, type: "access" },
       JWT_SECRET!,
-      { expiresIn: "15m" }
+      { expiresIn: "7d" }
     );
 
     // Generate refresh token (7 days)
@@ -95,14 +95,14 @@ export async function POST(req: Request) {
       id: user.id,
       email: user.email,
       role: user.role,
-      expiresIn: "15m",
+      expiresIn: "7d",
     });
     console.log("Refresh Token created for user:", user.id);
 
     // Create response
     const data = {
       tokens: {
-        accessTokenExpiresIn: "15m",
+        accessTokenExpiresIn: "7d",
         refreshTokenExpiresIn: "7d",
       },
       user: {
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 15 * 60,
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
