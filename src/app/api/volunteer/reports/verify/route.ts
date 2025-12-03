@@ -4,9 +4,167 @@ import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { verifyToken } from "@/lib/auth";
 import { assignmentManager } from "@/lib/assignment/redisManager";
 import { realtimeEmitter } from "@/lib/realtime/eventEmitter";
+import { Prisma, TaskStatus, Priority } from "@prisma/client";
 
 const VERIFICATION_THRESHOLD = 1;
 const POINTS_PER_VERIFICATION = 5;
+
+// Helper to find best authority
+async function findBestAuthorityForTask(
+  lat: number,
+  lng: number,
+  city: string,
+  state: string,
+  locality: string = ""
+) {
+  try {
+    const authorities = await prisma.user.findMany({
+      where: {
+        role: "authority",
+        isProfileComplete: true,
+        baseLat: { not: null },
+        baseLng: { not: null },
+      },
+      include: {
+        serviceAreas: {
+          select: {
+            locality: true,
+            city: true,
+            state: true,
+          },
+        },
+        _count: {
+          select: {
+            assignedTasks: {
+              where: {
+                status: {
+                  in: ["ASSIGNED", "SCHEDULED", "IN_PROGRESS"] as TaskStatus[],
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (authorities.length === 0) {
+      console.log("❌ No authority users found");
+      return null;
+    }
+
+    console.log(`✅ Found ${authorities.length} potential authorities`);
+
+    // Calculate distance
+    const calculateDistance = (
+      lat1: number,
+      lon1: number,
+      lat2: number,
+      lon2: number
+    ): number => {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    // Score authorities
+    const scored = authorities
+      .map((authority) => {
+        let score = 0;
+
+        // Distance scoring
+        if (authority.baseLat && authority.baseLng) {
+          const distance = calculateDistance(
+            lat,
+            lng,
+            authority.baseLat,
+            authority.baseLng
+          );
+          const radius = authority.serviceRadius || 10;
+          if (distance <= radius) {
+            score += Math.max(30 - distance * 2, 5);
+          } else {
+            console.log(
+              `Authority ${authority.id} too far: ${distance.toFixed(2)}km`
+            );
+            return { authority, score: 0 };
+          }
+        }
+
+        // Workload scoring
+        const maxTasks = authority.maxTasksPerDay || 10;
+        const currentTasks = authority._count.assignedTasks;
+        const workload = (currentTasks / maxTasks) * 100;
+        if (workload < 50) score += 20;
+        else if (workload < 75) score += 10;
+        else if (workload < 90) score += 5;
+        console.log(
+          `Authority ${authority.id} workload: ${workload.toFixed(1)}% (${currentTasks}/${maxTasks})`
+        );
+
+        // Performance scoring
+        const completionRate = authority.completionRate || 0;
+        if (completionRate > 90) score += 10;
+        else if (completionRate > 75) score += 5;
+
+        // Service area priority bonus
+        if (authority.serviceAreas && authority.serviceAreas.length > 0) {
+          const hasMatchingArea = authority.serviceAreas.some(
+            (area) =>
+              (area.locality &&
+                area.locality.toLowerCase() === locality.toLowerCase()) ||
+              (area.city && area.city.toLowerCase() === city.toLowerCase()) ||
+              (area.state && area.state.toLowerCase() === state.toLowerCase())
+          );
+          if (hasMatchingArea) {
+            score += 15;
+            console.log(`Authority ${authority.id} has matching service area`);
+          }
+        }
+
+        console.log(`Authority ${authority.id} final score: ${score}`);
+        return { authority, score };
+      })
+      .filter((item) => item.score > 0);
+
+    if (scored.length === 0) {
+      console.log("❌ No suitable authorities found after filtering");
+      return null;
+    }
+
+    const best = scored.sort((a, b) => b.score - a.score)[0];
+    console.log(
+      `🏆 Selected authority ${best.authority.id} with score ${best.score}`
+    );
+    return best.authority;
+  } catch (error) {
+    console.error("❌ Error finding authority:", error);
+    return null;
+  }
+}
+
+// Helper to determine task priority
+function getTaskPriority(category: string): Priority {
+  const cat = category.toLowerCase();
+  if (
+    cat.includes("hazardous") ||
+    cat.includes("medical") ||
+    cat.includes("electronic")
+  )
+    return "URGENT";
+  if (cat.includes("plastic") || cat.includes("metal") || cat.includes("mixed"))
+    return "HIGH";
+  if (cat.includes("organic") || cat.includes("paper") || cat.includes("food"))
+    return "MEDIUM";
+  return "LOW";
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,8 +241,15 @@ export async function POST(req: NextRequest) {
       const count = await tx.verification.count({
         where: { reportId, decision: status },
       });
+      console.log("🔍 DEBUG - Report verification:");
+      console.log("Report ID:", report.id);
+      console.log("Report status:", report.status);
+      console.log("Verification status:", status);
+      console.log("Verification count:", count);
+      console.log("Threshold reached:", count >= VERIFICATION_THRESHOLD);
 
       let thresholdReached = false;
+      let authorityTaskCreated = false;
 
       // 7. If threshold reached, finalize
       if (count >= VERIFICATION_THRESHOLD) {
@@ -131,9 +296,155 @@ export async function POST(req: NextRequest) {
         });
 
         thresholdReached = true;
+
+        // ========== AUTHORITY ASSIGNMENT LOGIC ==========
+        if (status === "VERIFIED") {
+          console.log(
+            "📋 Starting authority assignment for verified report..."
+          );
+
+          // Find best authority for this task
+          const bestAuthority = await findBestAuthorityForTask(
+            report.lat,
+            report.lng,
+            report.city || "Unknown",
+            report.state || "Unknown",
+            report.locality || ""
+          );
+
+          // Add fallback authority logic
+          let assignedAuthority = bestAuthority
+            ? {
+                id: bestAuthority.id,
+                name: bestAuthority.name,
+                email: bestAuthority.email,
+              }
+            : null;
+          if (!assignedAuthority) {
+            console.log(
+              "⚠️ No authority found via algorithm, trying fallback..."
+            );
+
+            // Fallback: Find ANY authority with complete profile
+            const fallbackAuthority = await tx.user.findFirst({
+              where: {
+                role: "authority",
+                isProfileComplete: true,
+              },
+              orderBy: { tasksCompleted: "asc" },
+            });
+
+            assignedAuthority = fallbackAuthority;
+
+            if (assignedAuthority) {
+              console.warn(
+                `⚠️ Using fallback authority ${assignedAuthority.id} for report ${report.id}`
+              );
+            } else {
+              console.error(
+                "❌ CRITICAL: No authority users exist in the system!"
+              );
+            }
+          }
+
+          // Create task for authority collection
+          const taskPriority = getTaskPriority(report.category);
+          const address =
+            report.address ||
+            `${report.houseNo ? report.houseNo + ", " : ""}${report.street ? report.street + ", " : ""}${report.locality}, ${report.city}, ${report.state} - ${report.pincode}`;
+
+          // Add scheduledFor (required by schema)
+          const scheduledFor = new Date();
+          scheduledFor.setHours(scheduledFor.getHours() + 24);
+
+          // Task data with all required fields
+          const taskData: Prisma.TaskCreateInput = {
+            report: { connect: { id: report.id } },
+            priority: taskPriority,
+            location: {
+              lat: report.lat,
+              lng: report.lng,
+              address: address,
+            } as Prisma.InputJsonValue,
+            status: assignedAuthority ? "ASSIGNED" : "PENDING",
+            scheduledFor: scheduledFor,
+            collectionProof: [],
+            ...(assignedAuthority && {
+              assignedTo: { connect: { id: assignedAuthority.id } },
+            }),
+          };
+
+          // Debug logging
+          console.log("=== TASK CREATION DEBUG ===");
+          console.log("Report ID:", report.id);
+          console.log("Report City:", report.city);
+          console.log("Report State:", report.state);
+          console.log("Authority found:", assignedAuthority?.id || "NONE");
+          console.log("Authority name:", assignedAuthority?.name || "NONE");
+          console.log(
+            "Task status:",
+            assignedAuthority ? "ASSIGNED" : "PENDING"
+          );
+          console.log("Task priority:", taskPriority);
+          console.log("Scheduled for:", scheduledFor);
+          console.log("=== END DEBUG ===");
+
+          try {
+            const createdTask = await tx.task.create({
+              data: taskData,
+            });
+            authorityTaskCreated = true;
+            console.log(
+              `✅ Task ${createdTask.id} created for report ${report.id}, assigned to ${assignedAuthority?.id || "NO AUTHORITY"}`
+            );
+          } catch (taskError: unknown) {
+            const errorMessage =
+              taskError instanceof Error ? taskError.message : "Unknown error";
+            console.error("❌ Task creation failed:", errorMessage);
+          }
+
+          // Send notification to reporter
+          if (report.reporterId) {
+            try {
+              await tx.notification.create({
+                data: {
+                  userId: report.reporterId,
+                  type: "REPORT_VERIFIED",
+                  title: "Report Verified!",
+                  message: `Your ${report.category} waste report has been verified. ${assignedAuthority ? `Assigned to ${assignedAuthority.name}` : "Awaiting authority assignment"}.`,
+                },
+              });
+              console.log(
+                `✅ Notification sent to reporter ${report.reporterId}`
+              );
+            } catch (notifError) {
+              console.error("❌ Notification creation failed:", notifError);
+            }
+          }
+
+          // Send notification to assigned authority (if any)
+          if (assignedAuthority) {
+            try {
+              await tx.notification.create({
+                data: {
+                  userId: assignedAuthority.id,
+                  type: "TASK_ASSIGNED",
+                  title: "New Task Assigned",
+                  message: `New ${taskPriority} priority task assigned to you in ${report.city}.`,
+                },
+              });
+              console.log(
+                `✅ Notification sent to authority ${assignedAuthority.id}`
+              );
+            } catch (notifError) {
+              console.error("❌ Authority notification failed:", notifError);
+            }
+          }
+        }
+        // ========== END OF LOGIC ==========
       }
 
-      return { count, thresholdReached };
+      return { count, thresholdReached, authorityTaskCreated };
     });
 
     // Update Redis
@@ -158,10 +469,11 @@ export async function POST(req: NextRequest) {
       verified: true,
       count: result.count,
       thresholdReached: result.thresholdReached,
+      authorityTaskCreated: result.authorityTaskCreated,
       status: result.thresholdReached ? status : "PENDING",
     });
   } catch (error: unknown) {
-    console.error("Verification error:", error);
+    console.error("❌ Verification error:", error);
 
     const message =
       error instanceof Error
