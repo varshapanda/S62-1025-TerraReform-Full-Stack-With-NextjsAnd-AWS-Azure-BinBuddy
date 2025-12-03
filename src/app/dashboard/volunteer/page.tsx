@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import { useVolunteerStore } from "@/store/volunteerStore";
@@ -8,8 +8,18 @@ export default function VolunteerDashboardPage() {
   const router = useRouter();
   const { stats, loading, fetchStats } = useVolunteerStore();
 
+  // ✅ Added for points display
+  const [points, setPoints] = useState<number>(0);
+
   useEffect(() => {
     fetchStats();
+  }, []);
+
+  // ✅ Added for fetching user points
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => setPoints(data?.data?.user?.points ?? 0));
   }, []);
 
   return (
@@ -26,7 +36,7 @@ export default function VolunteerDashboardPage() {
         </div>
 
         {/* Stats Grid - matching the image design */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-slate-400 text-sm mb-2">
               Pending verification
@@ -35,17 +45,25 @@ export default function VolunteerDashboardPage() {
               {loading ? "..." : stats.pending}
             </p>
           </div>
+
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-slate-400 text-sm mb-2">Verified Today</h3>
             <p className="text-3xl font-bold text-emerald-400">
               {loading ? "..." : stats.verifiedToday}
             </p>
           </div>
+
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
             <h3 className="text-slate-400 text-sm mb-2">Total Verified</h3>
             <p className="text-3xl font-bold text-white">
               {loading ? "..." : stats.totalVerified}
             </p>
+          </div>
+
+          {/* ✅ NEW POINTS CARD */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+            <h3 className="text-slate-400 text-sm mb-2">Your Points</h3>
+            <p className="text-3xl font-bold text-cyan-400">{points}</p>
           </div>
         </div>
 
@@ -54,6 +72,7 @@ export default function VolunteerDashboardPage() {
           <h3 className="text-xl font-semibold text-white mb-4">
             Volunteer Actions
           </h3>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={() => router.push("/dashboard/volunteer/verify")}
@@ -73,6 +92,7 @@ export default function VolunteerDashboardPage() {
                 </div>
               </div>
             </button>
+
             <button
               onClick={() => router.push("/dashboard/volunteer/history")}
               className="p-4 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-left transition cursor-pointer group"

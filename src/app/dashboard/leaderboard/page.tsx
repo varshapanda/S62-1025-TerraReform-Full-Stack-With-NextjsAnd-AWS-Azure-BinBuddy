@@ -10,7 +10,7 @@ export default function LeaderboardPage() {
   const [userTotalReports, setUserTotalReports] = useState(0);
   const [userValidatedReports, setUserValidatedReports] = useState(0);
 
-  type Community = {
+  type CityCommunity = {
     name: string;
     impactScore: number;
     validatedCount: number;
@@ -23,12 +23,17 @@ export default function LeaderboardPage() {
     name: string | null;
     points: number;
   };
-  const [topCommunity, setTopCommunity] = useState<Community | null>(null);
-  const [topCommunities, setTopCommunities] = useState<Community[]>([]);
+
+  const [topCityCommunity, setTopCityCommunity] =
+    useState<CityCommunity | null>(null);
+
+  const [topCityCommunities, setTopCityCommunities] = useState<CityCommunity[]>(
+    []
+  );
+
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
 
   const [communityScrollPosition, setCommunityScrollPosition] = useState(0);
-  // const contributorScrollPosition = communityScrollPosition;
 
   async function loadData() {
     try {
@@ -43,8 +48,8 @@ export default function LeaderboardPage() {
       setUserTotalReports(data.userTotalReports || 0);
       setUserValidatedReports(data.userValidatedReports || 0);
 
-      setTopCommunity(data.topCommunity || null);
-      setTopCommunities(data.topCommunities || []);
+      setTopCityCommunity(data.topCommunity || null);
+      setTopCityCommunities(data.topCommunities || []);
       setLeaderboard(data.leaderboard || []);
     } catch (err) {
       console.error("Leaderboard fetch failed:", err);
@@ -55,7 +60,6 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     loadData();
-
     const timer = setInterval(loadData, 3000);
     return () => clearInterval(timer);
   }, []);
@@ -157,26 +161,34 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          {/* TOP COMMUNITY + TOP COMMUNITIES */}
+          {/* TOP CITY / COMMUNITY + LIST */}
           <div className="lg:w-3/4 space-y-6">
-            {topCommunity && (
+            {topCityCommunity && (
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <h2 className="text-xl text-white mb-2">Top Community</h2>
+                <h2 className="text-xl text-white mb-2">
+                  Top City / Community in India
+                </h2>
 
-                <p className="text-3xl text-emerald-400">{topCommunity.name}</p>
+                <p className="text-3xl text-emerald-400">
+                  {topCityCommunity.name}
+                </p>
 
                 <div className="flex gap-6 mt-4">
                   <div>
                     <p className="text-slate-400">Validated</p>
-                    <p className="text-white">{topCommunity.validatedCount}</p>
+                    <p className="text-white">
+                      {topCityCommunity.validatedCount}
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-400">Total Reports</p>
-                    <p className="text-white">{topCommunity.totalReports}</p>
+                    <p className="text-white">
+                      {topCityCommunity.totalReports}
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-400">Users</p>
-                    <p className="text-white">{topCommunity.userCount}</p>
+                    <p className="text-white">{topCityCommunity.userCount}</p>
                   </div>
                 </div>
               </div>
@@ -184,7 +196,10 @@ export default function LeaderboardPage() {
 
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
               <div className="p-6 border-b border-slate-700 flex items-center justify-between">
-                <h2 className="text-white font-semibold">Top Communities</h2>
+                <h2 className="text-white font-semibold">
+                  Top Indian Cities & Communities
+                </h2>
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => scrollCommunities("left")}
@@ -227,9 +242,9 @@ export default function LeaderboardPage() {
                 </div>
               </div>
 
-              {topCommunities.length === 0 ? (
+              {topCityCommunities.length === 0 ? (
                 <p className="p-6 text-slate-500 text-center">
-                  No community data available
+                  No Indian city/community data available
                 </p>
               ) : (
                 <div
@@ -246,22 +261,25 @@ export default function LeaderboardPage() {
                           Rank
                         </th>
                         <th className="px-6 py-3 text-left text-emerald-400">
-                          Community
+                          City / Community
                         </th>
                         <th className="px-6 py-3 text-right text-emerald-400">
                           Impact
                         </th>
                       </tr>
                     </thead>
+
                     <tbody>
-                      {topCommunities.map((c, i) => (
+                      {topCityCommunities.map((c, i) => (
                         <tr
                           key={c.name}
                           className="border-t border-slate-700 hover:bg-slate-700/20 transition-colors"
                         >
                           <td className="px-6 py-4">
                             <span
-                              className={`px-3 py-1 border rounded ${getRankBadge(i + 1)}`}
+                              className={`px-3 py-1 border rounded ${getRankBadge(
+                                i + 1
+                              )}`}
                             >
                               {i + 1}
                             </span>
@@ -359,7 +377,9 @@ export default function LeaderboardPage() {
                       >
                         <td className="px-6 py-4">
                           <span
-                            className={`px-3 py-1 border rounded ${getRankBadge(i + 1)}`}
+                            className={`px-3 py-1 border rounded ${getRankBadge(
+                              i + 1
+                            )}`}
                           >
                             {i + 1}
                           </span>

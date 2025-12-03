@@ -6,6 +6,7 @@ import { assignmentManager } from "@/lib/assignment/redisManager";
 import { realtimeEmitter } from "@/lib/realtime/eventEmitter";
 
 const VERIFICATION_THRESHOLD = 1;
+const POINTS_PER_VERIFICATION = 5;
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,6 +96,28 @@ export async function POST(req: NextRequest) {
             verifiedBy: user.id,
             remarks: status === "VERIFIED" ? verificationNote : null,
             rejectionReason: status === "REJECTED" ? verificationNote : null,
+          },
+        });
+
+        // ✅ AWARD POINTS
+        await tx.user.update({
+          where: { id: report.reporterId },
+          data: {
+            points: { increment: POINTS_PER_VERIFICATION },
+          },
+        });
+
+        // ✅ UPDATE LEADERBOARD
+        await tx.userLeaderboard.upsert({
+          where: { userId: report.reporterId },
+          update: {
+            points: { increment: POINTS_PER_VERIFICATION },
+            updatedAt: new Date(),
+          },
+          create: {
+            userId: report.reporterId,
+            points: POINTS_PER_VERIFICATION,
+            rank: 0, // Calculated dynamically via leaderboard API
           },
         });
 
