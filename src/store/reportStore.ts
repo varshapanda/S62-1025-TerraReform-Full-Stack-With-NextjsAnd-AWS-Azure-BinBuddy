@@ -172,15 +172,34 @@ export const useReportStore = create<ReportState>((set, get) => ({
         set({ fetchingLocation: false });
       },
       (error) => {
+        let errorMessage = "Failed to get your location.";
+
+        // Provide specific error messages
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage =
+              "Location access denied. Please enable location permissions in your browser.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage =
+              "Location information unavailable. Please try again or enter manually.";
+            break;
+          case error.TIMEOUT:
+            errorMessage =
+              "Location request timed out. Please try again or enter address manually.";
+            break;
+        }
+
         set({
-          error: "Failed to get your location. Please enable location access.",
+          error: errorMessage,
           fetchingLocation: false,
         });
         console.error("Geolocation error:", error);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 30000, // Increase timeout to 30 seconds
+        maximumAge: 10000, // Use cached location if less than 10 seconds old
       }
     );
   },

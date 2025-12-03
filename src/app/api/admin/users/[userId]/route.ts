@@ -73,3 +73,77 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     return sendError("Failed to delete user", ERROR_CODES.INTERNAL_ERROR, 500);
   }
 }
+
+export async function GET(req: NextRequest, { params }: Params) {
+  try {
+    // Verify admin
+    const { success, user } = verifyToken(req);
+
+    if (!success || !user || user.role.toLowerCase() !== "admin") {
+      return sendError(
+        "Unauthorized. Admin access required.",
+        ERROR_CODES.AUTH_ERROR,
+        403
+      );
+    }
+
+    const { userId: userIdString } = await params;
+    const userId = userIdString;
+
+    // Fetch user details with related data
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        points: true,
+        city: true,
+        state: true,
+        createdAt: true,
+        _count: {
+          select: {
+            reports: true,
+            assignments: {
+              where: {
+                status: "COMPLETED",
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!targetUser) {
+      return sendError("User not found", ERROR_CODES.NOT_FOUND, 404);
+    }
+
+    // Format the response
+    const userData = {
+      id: targetUser.id,
+      name: targetUser.name,
+      email: targetUser.email,
+      role: targetUser.role,
+      points: targetUser.points,
+      city: targetUser.city,
+      state: targetUser.state,
+      createdAt: targetUser.createdAt,
+      reportsCount: targetUser._count.reports,
+      tasksCompleted: targetUser._count.assignments,
+    };
+
+    return sendSuccess(
+      { user: userData },
+      "User details fetched successfully",
+      200
+    );
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return sendError(
+      "Failed to fetch user details",
+      ERROR_CODES.INTERNAL_ERROR,
+      500
+    );
+  }
+}

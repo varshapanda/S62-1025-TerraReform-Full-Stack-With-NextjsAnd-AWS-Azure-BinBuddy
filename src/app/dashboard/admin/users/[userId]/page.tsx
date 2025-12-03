@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { use } from "react";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import Link from "next/link";
 import {
@@ -8,35 +12,55 @@ import {
   Calendar,
   Award,
   Shield,
+  Loader2,
 } from "lucide-react";
 
 interface Props {
-  params: { userId: string };
+  params: Promise<{ userId: string }>;
 }
 
-// This would normally fetch from your API
-async function getUserData(userId: string) {
-  // Mock data - replace with actual API call
-  // const response = await fetch(`/api/admin/users/${userId}`);
-  // const data = await response.json();
-
-  return {
-    id: parseInt(userId),
-    name: `User ${userId}`,
-    email: `user${userId}@example.com`,
-    role: "user",
-    points: 250,
-    state: "Delhi",
-    city: "New Delhi",
-    createdAt: "2025-01-15T10:30:00Z",
-    reportsCount: 12,
-    tasksCompleted: 5,
-  };
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  points: number;
+  state?: string;
+  city?: string;
+  createdAt: string;
+  reportsCount: number;
+  tasksCompleted: number;
 }
 
-export default async function UserDetailPage({ params }: Props) {
-  const { userId } = params;
-  const user = await getUserData(userId);
+export default function UserDetailPage({ params }: Props) {
+  const resolvedParams = use(params);
+  const { userId } = resolvedParams;
+
+  const [user, setUser] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch(`/api/admin/users/${userId}`);
+        const data = await response.json();
+
+        if (response.ok) {
+          setUser(data.data?.user || data.user);
+        } else {
+          setError(data.error || "Failed to fetch user");
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        setError("Failed to load user data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [userId]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -55,6 +79,34 @@ export default async function UserDetailPage({ params }: Props) {
     };
     return colors[role.toLowerCase()] || colors.user;
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout role="admin">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="animate-spin text-emerald-400" size={40} />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <DashboardLayout role="admin">
+        <div className="space-y-6">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
+            <p className="text-red-400">{error || "User not found"}</p>
+            <Link
+              href="/dashboard/admin/users"
+              className="inline-block mt-4 text-emerald-400 hover:text-emerald-300"
+            >
+              Back to User List
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="admin">
@@ -75,15 +127,13 @@ export default async function UserDetailPage({ params }: Props) {
             User Management
           </Link>
           <ChevronRight size={16} />
-          <span className="text-white">User #{userId}</span>
+          <span className="text-white">{user.name}</span>
         </div>
 
         {/* Page Header */}
         <div>
           <h2 className="text-2xl font-bold text-white mb-2">User Profile</h2>
-          <p className="text-slate-400">
-            Viewing details for User ID: {userId}
-          </p>
+          <p className="text-slate-400">Viewing details for {user.name}</p>
         </div>
 
         {/* User Info Card */}
@@ -130,7 +180,9 @@ export default async function UserDetailPage({ params }: Props) {
               <div>
                 <p className="text-xs text-slate-500">Location</p>
                 <p className="text-white font-medium">
-                  {user.city}, {user.state}
+                  {user.city && user.state
+                    ? `${user.city}, ${user.state}`
+                    : "Not specified"}
                 </p>
               </div>
             </div>
@@ -183,9 +235,6 @@ export default async function UserDetailPage({ params }: Props) {
           >
             Back to User List
           </Link>
-          <button className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition">
-            Edit User
-          </button>
         </div>
       </div>
     </DashboardLayout>
