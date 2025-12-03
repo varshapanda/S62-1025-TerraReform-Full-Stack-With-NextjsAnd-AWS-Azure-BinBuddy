@@ -298,7 +298,6 @@ export default function ReportPage() {
                 Location Details
                 <span className="text-red-400">*</span>
               </label>
-
               {/* Mode Toggle */}
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <button
@@ -329,7 +328,6 @@ export default function ReportPage() {
                   Enter Manually
                 </button>
               </div>
-
               {/* MAP MODE */}
               {locationMode === "map" && (
                 <div className="space-y-4">
@@ -385,7 +383,6 @@ export default function ReportPage() {
                   )}
                 </div>
               )}
-
               {/* MANUAL MODE */}
               {locationMode === "manual" && (
                 <div className="space-y-4">
@@ -454,16 +451,32 @@ export default function ReportPage() {
                   </button>
                 </div>
               )}
-
               {/* Address Confirmation */}
               {isLocationSet && (
-                <div className="mt-6 p-5 bg-emerald-500/5 rounded-xl border border-emerald-500/20">
+                <div
+                  className={`mt-6 p-5 rounded-xl border ${
+                    address.city && address.state
+                      ? "bg-emerald-500/5 border-emerald-500/20"
+                      : "bg-amber-500/5 border-amber-500/20"
+                  }`}
+                >
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
-                      <Check className="w-5 h-5 text-emerald-400" />
-                      <h3 className="text-emerald-400 font-semibold">
-                        Location Confirmed
-                      </h3>
+                      {address.city && address.state ? (
+                        <>
+                          <Check className="w-5 h-5 text-emerald-400" />
+                          <h3 className="text-emerald-400 font-semibold">
+                            Location Confirmed
+                          </h3>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-5 h-5 text-amber-400" />
+                          <h3 className="text-amber-400 font-semibold">
+                            Please Verify Address
+                          </h3>
+                        </>
+                      )}
                     </div>
                     {locationMode === "map" && (
                       <button
@@ -476,32 +489,95 @@ export default function ReportPage() {
                     )}
                   </div>
 
-                  {address.fullAddress || (address.city && address.state) ? (
-                    <div className="space-y-2">
-                      <p className="text-white text-sm leading-relaxed">
-                        {locationMode === "map" && address.fullAddress
-                          ? address.fullAddress
-                          : [
-                              address.houseNo,
-                              address.street,
-                              address.locality,
-                              address.city,
-                              address.state,
-                              address.pincode,
-                            ]
-                              .filter(Boolean)
-                              .join(", ")}
-                      </p>
+                  {/* Address Details */}
+                  <div className="space-y-3">
+                    {/* Full Address */}
+                    {(address.fullAddress ||
+                      (address.city && address.state)) && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 uppercase font-semibold">
+                          Full Address
+                        </p>
+                        <p className="text-white text-sm leading-relaxed">
+                          {locationMode === "map" && address.fullAddress
+                            ? address.fullAddress
+                            : [
+                                address.houseNo,
+                                address.street,
+                                address.locality,
+                                address.city,
+                                address.state,
+                                address.pincode,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Component Breakdown */}
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-700">
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">City</p>
+                        <p
+                          className={`text-sm font-medium ${
+                            address.city ? "text-white" : "text-amber-400"
+                          }`}
+                        >
+                          {address.city || "Missing"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">State</p>
+                        <p
+                          className={`text-sm font-medium ${
+                            address.state ? "text-white" : "text-amber-400"
+                          }`}
+                        >
+                          {address.state || "Missing"}
+                        </p>
+                      </div>
+                      {address.locality && (
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">
+                            Locality
+                          </p>
+                          <p className="text-sm text-slate-300">
+                            {address.locality}
+                          </p>
+                        </div>
+                      )}
+                      {address.pincode && (
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Pincode</p>
+                          <p className="text-sm text-slate-300">
+                            {address.pincode}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* GPS Coordinates */}
+                    <div className="pt-2 border-t border-slate-700">
                       <p className="text-slate-400 text-xs font-mono">
                         GPS: {formData.lat.toFixed(6)},{" "}
                         {formData.lng.toFixed(6)}
                       </p>
                     </div>
-                  ) : (
-                    <p className="text-slate-400 text-sm font-mono">
-                      Coordinates: {formData.lat.toFixed(6)},{" "}
-                      {formData.lng.toFixed(6)}
-                    </p>
+                  </div>
+
+                  {/* Warning for incomplete address */}
+                  {(!address.city || !address.state) && (
+                    <div className="mt-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                      <p className="text-amber-400 text-xs flex items-start gap-2">
+                        <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <span>
+                          City and State are required for proper task
+                          assignment. Please switch to manual mode to enter
+                          complete details.
+                        </span>
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

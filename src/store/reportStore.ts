@@ -18,13 +18,10 @@ interface Address {
 }
 
 interface ReportState {
-  // Form state
   formData: FormData;
   address: Address;
   file: File | null;
   preview: string;
-
-  // UI state
   loading: boolean;
   error: string;
   success: boolean;
@@ -34,7 +31,6 @@ interface ReportState {
   mapLoaded: boolean;
   showMap: boolean;
 
-  // Actions
   setFormData: (data: Partial<FormData>) => void;
   setAddress: (addr: Partial<Address>) => void;
   setFile: (file: File | null) => void;
@@ -48,7 +44,6 @@ interface ReportState {
   setMapLoaded: (loaded: boolean) => void;
   setShowMap: (show: boolean) => void;
 
-  // Complex actions
   reverseGeocode: (lat: number, lng: number) => Promise<void>;
   handleAutoDetect: (
     mapRef?: React.MutableRefObject<L.Map | null>,
@@ -76,8 +71,56 @@ const initialAddress: Address = {
   fullAddress: "",
 };
 
+// Helper function to parse OpenStreetMap address data
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const parseOSMAddress = (osmData: any): Address => {
+  const addr = osmData.address;
+
+  // Priority order for city detection (most specific to least)
+  const city =
+    addr.city ||
+    addr.town ||
+    addr.municipality ||
+    addr.village ||
+    // Fallback to district if nothing else available
+    (addr.county && !addr.city && !addr.town ? addr.county : "") ||
+    "";
+
+  // Priority order for locality/area detection
+  const locality =
+    addr.suburb ||
+    addr.neighbourhood ||
+    addr.quarter ||
+    addr.hamlet ||
+    addr.residential ||
+    addr.locality ||
+    "";
+
+  // State name
+  const state = addr.state || "";
+
+  // Street and house details
+  const houseNo = addr.house_number || "";
+  const street = addr.road || addr.street || addr.pedestrian || "";
+  const pincode = addr.postcode || "";
+
+  // Build a clean full address (only include non-empty parts)
+  const addressParts = [houseNo, street, locality, city, state, pincode].filter(
+    (part) => part && part.trim()
+  );
+
+  return {
+    houseNo,
+    street,
+    locality,
+    city,
+    state,
+    pincode,
+    fullAddress: addressParts.join(", "),
+  };
+};
+
 export const useReportStore = create<ReportState>((set, get) => ({
-  // Initial state
   formData: initialFormData,
   address: initialAddress,
   file: null,
@@ -91,7 +134,6 @@ export const useReportStore = create<ReportState>((set, get) => ({
   mapLoaded: false,
   showMap: false,
 
-  // Simple setters
   setFormData: (data) =>
     set((state) => ({ formData: { ...state.formData, ...data } })),
 
@@ -103,13 +145,24 @@ export const useReportStore = create<ReportState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
   setSuccess: (success) => set({ success }),
-  setLocationMode: (mode) => set({ locationMode: mode }),
+  setLocationMode: (mode) => {
+    // Keep map visible when switching modes if location is already set
+    const currentState = get();
+    const keepMapVisible =
+      mode === "map" &&
+      currentState.formData.lat !== 0 &&
+      currentState.formData.lng !== 0;
+
+    set({
+      locationMode: mode,
+      showMap: keepMapVisible || currentState.showMap,
+    });
+  },
   setFetchingLocation: (fetching) => set({ fetchingLocation: fetching }),
   setFetchingAddress: (fetching) => set({ fetchingAddress: fetching }),
   setMapLoaded: (loaded) => set({ mapLoaded: loaded }),
   setShowMap: (show) => set({ showMap: show }),
 
-  // Reverse geocoding
   reverseGeocode: async (lat, lng) => {
     set({ fetchingAddress: true, error: "" });
     try {
@@ -125,28 +178,41 @@ export const useReportStore = create<ReportState>((set, get) => ({
       const data = await response.json();
 
       if (data.address) {
-        const addr = data.address;
+        const parsedAddress = parseOSMAddress(data);
+
+        // Validate that we have at least city and state
+        if (!parsedAddress.city || !parsedAddress.state) {
+          console.warn("Incomplete address data from OSM:", {
+            received: data.address,
+            parsed: parsedAddress,
+          });
+
+          set({
+            error:
+              "Could not determine complete address. Please verify or enter manually.",
+            address: parsedAddress, // Still set what we got
+          });
+          return;
+        }
+
+        console.log("Parsed address:", parsedAddress);
         set({
-          address: {
-            houseNo: addr.house_number || "",
-            street: addr.road || addr.street || "",
-            locality: addr.suburb || addr.neighbourhood || addr.quarter || "",
-            city: addr.city || addr.town || addr.village || "",
-            state: addr.state || "",
-            pincode: addr.postcode || "",
-            fullAddress: data.display_name || "",
-          },
+          address: parsedAddress,
+          error: "",
         });
+      } else {
+        throw new Error("No address data received from geocoding service");
       }
     } catch (err) {
       console.error("Geocoding error:", err);
-      set({ error: "Failed to fetch address. You can enter it manually." });
+      set({
+        error: "Failed to fetch address. Please enter it manually.",
+      });
     } finally {
       set({ fetchingAddress: false });
     }
   },
 
-  // Auto-detect location
   handleAutoDetect: (mapRef, markerRef) => {
     if (!navigator.geolocation) {
       set({ error: "Geolocation not supported by your browser" });
@@ -162,7 +228,6 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
         get().setFormData({ lat, lng });
 
-        // Update map if refs provided
         if (mapRef?.current && markerRef?.current) {
           mapRef.current.setView([lat, lng], 16);
           markerRef.current.setLatLng([lat, lng]);
@@ -174,7 +239,6 @@ export const useReportStore = create<ReportState>((set, get) => ({
       (error) => {
         let errorMessage = "Failed to get your location.";
 
-        // Provide specific error messages
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage =
@@ -198,13 +262,12 @@ export const useReportStore = create<ReportState>((set, get) => ({
       },
       {
         enableHighAccuracy: true,
-        timeout: 30000, // Increase timeout to 30 seconds
-        maximumAge: 10000, // Use cached location if less than 10 seconds old
+        timeout: 30000,
+        maximumAge: 10000,
       }
     );
   },
 
-  // Handle file upload
   handleFileChange: (selectedFile) => {
     if (!selectedFile.type.startsWith("image/")) {
       set({ error: "Only image files are allowed" });
@@ -225,7 +288,6 @@ export const useReportStore = create<ReportState>((set, get) => ({
     reader.readAsDataURL(selectedFile);
   },
 
-  // Submit report
   submitReport: async () => {
     const { file, formData, address, locationMode } = get();
 
@@ -240,8 +302,11 @@ export const useReportStore = create<ReportState>((set, get) => ({
         throw new Error("Please set location");
       }
 
-      if (locationMode === "manual" && !address.city) {
-        throw new Error("Please enter address details");
+      // Validate required address fields
+      if (!address.city || !address.state) {
+        throw new Error(
+          "City and State are required. Please verify the address or enter manually."
+        );
       }
 
       // Get presigned URL
@@ -285,7 +350,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
       const s3Key = presignedUrlObj.pathname.substring(1);
       const imageUrl = `${process.env.NEXT_PUBLIC_S3_URL}/${s3Key}`;
 
-      // Build address string
+      // Build address string - use parsed components from OSM or manual entry
       const fullAddressString =
         locationMode === "manual"
           ? [
@@ -300,7 +365,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
               .join(", ")
           : address.fullAddress;
 
-      // Create report
+      // Create report with all address fields properly filled
       const reportRes = await fetch("/api/reports/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -311,11 +376,12 @@ export const useReportStore = create<ReportState>((set, get) => ({
           lat: formData.lat,
           lng: formData.lng,
           address: fullAddressString || undefined,
+          // Always send individual address components
           houseNo: address.houseNo || undefined,
           street: address.street || undefined,
           locality: address.locality || undefined,
-          city: address.city || undefined,
-          state: address.state || undefined,
+          city: address.city, // Required
+          state: address.state, // Required
           pincode: address.pincode || undefined,
         }),
       });
@@ -338,7 +404,6 @@ export const useReportStore = create<ReportState>((set, get) => ({
     }
   },
 
-  // Reset form
   resetForm: () => {
     set({
       formData: initialFormData,
