@@ -34,21 +34,6 @@ model User {
   rewards                 Reward[]
 
   // Authority-specific fields
-<<<<<<< Updated upstream
-  baseLat                 Float?
-  baseLng                 Float?
-  serviceRadius           Int?      @default(10)  // in km
-  vehicleType             VehicleType?
-  maxTasksPerDay          Int?      @default(10)
-  tasksCompleted          Int       @default(0)
-  completionRate          Float     @default(0)
-  avgCompletionTime       Int?      // in minutes
-  isProfileComplete       Boolean   @default(false)
-  
-  // Relations
-  serviceAreas            AuthorityServiceArea[]
-  assignedTasks           Task[]    @relation("AssignedTasks")
-=======
   baseLat           Float?
   baseLng           Float?
   serviceRadius     Int?         @default(10)
@@ -64,7 +49,6 @@ model User {
   assignedTasks Task[]                 @relation("AssignedTasks")
 
   leaderboard UserLeaderboard? // ✅ ADDED REQUIRED RELATION
->>>>>>> Stashed changes
 
   @@index([email])
   @@index([points])
@@ -84,7 +68,6 @@ model UserLeaderboard {
 model AuthorityServiceArea {
   id          String    @id @default(cuid())
   authorityId String
-<<<<<<< Updated upstream
   authority   User      @relation(fields: [authorityId], references: [id], onDelete: Cascade)
   city        String
   state       String
@@ -93,33 +76,15 @@ model AuthorityServiceArea {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
-=======
-  authority   User     @relation(fields: [authorityId], references: [id], onDelete: Cascade)
-  city        String
-  state       String
-  locality    String
-  priority    Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
->>>>>>> Stashed changes
   @@index([authorityId])
   @@index([city, state])
 }
 model Task {
-<<<<<<< Updated upstream
   id              String    @id @default(cuid())
   reportId        String    @unique
   report          Report    @relation(fields: [reportId], references: [id])
   assignedToId    String?   // Authority ID
   assignedTo      User?     @relation("AssignedTasks", fields: [assignedToId], references: [id])
-=======
-  id              String     @id @default(cuid())
-  reportId        String     @unique
-  report          Report     @relation(fields: [reportId], references: [id])
-  assignedToId    String?
-  assignedTo      User?      @relation("AssignedTasks", fields: [assignedToId], references: [id])
->>>>>>> Stashed changes
   status          TaskStatus @default(PENDING)
   priority        Priority  @default(MEDIUM)
   scheduledFor    DateTime?
@@ -129,7 +94,6 @@ model Task {
   location        Json?     // {lat, lng, address}
   collectionProof String[]  // Image URLs
   notes           String?
-<<<<<<< Updated upstream
   estimatedTime   Int?      // in minutes
   actualTime      Int?      // in minutes
   
@@ -137,14 +101,6 @@ model Task {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
-=======
-  estimatedTime   Int?
-  actualTime      Int?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
->>>>>>> Stashed changes
   @@index([assignedToId])
   @@index([status])
   @@index([scheduledFor])
@@ -174,10 +130,7 @@ model Report {
   lat       Float
   lng       Float
 
-<<<<<<< Updated upstream
   // Address fields
-=======
->>>>>>> Stashed changes
   address  String?
   houseNo  String?
   street   String?
@@ -186,17 +139,11 @@ model Report {
   state    String?
   pincode  String?
 
-<<<<<<< Updated upstream
   // Reporter info
   reporterId String
   reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
   // Verification
-=======
-  reporterId String
-  reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-
->>>>>>> Stashed changes
   status          ReportStatus   @default(PENDING)
   verifiedAt      DateTime?
   verifiedBy      String?
@@ -207,7 +154,6 @@ model Report {
   priority        Int            @default(5)
   assignedCount   Int            @default(0)
 
-<<<<<<< Updated upstream
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -215,13 +161,6 @@ model Report {
   // Relations
   images Image[]
 task Task?
-=======
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  images Image[]
-  task   Task?
->>>>>>> Stashed changes
 
   @@index([reporterId])
   @@index([status])
@@ -285,41 +224,6 @@ model Image {
   @@index([uploadedBy])
 }
 
-<<<<<<< Updated upstream
-=======
-model Assignment {
-  id          String           @id @default(cuid())
-  reportId    String
-  volunteerId String
-  assignedAt  DateTime         @default(now())
-  viewedAt    DateTime?
-  completedAt DateTime?
-  status      AssignmentStatus @default(PENDING)
-
-  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  volunteer User   @relation("VolunteerAssignments", fields: [volunteerId], references: [id], onDelete: Cascade)
-
-  @@unique([reportId, volunteerId])
-  @@index([volunteerId, status])
-  @@index([reportId, status])
-}
-
-model Verification {
-  id               String       @id @default(cuid())
-  reportId         String
-  volunteerId      String
-  decision         ReportStatus
-  verificationNote String?
-  createdAt        DateTime     @default(now())
-
-  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  volunteer User   @relation("VolunteerVerifications", fields: [volunteerId], references: [id], onDelete: Cascade)
-
-  @@unique([reportId, volunteerId])
-  @@index([reportId])
-}
-
->>>>>>> Stashed changes
 enum Role {
   user
   admin
