@@ -24,6 +24,13 @@ const ROLE_PERMISSIONS: Record<string, RegExp[]> = {
     /^\/api\/tasks/, // Manage tasks
     /^\/api\/reports\/verified/, // View verified reports
     /^\/api\/uploads\/presign/, // Upload images
+    /^\/api\/authority/, // Allow ALL authority api routes
+    // /^\/api\/tasks/,
+    // /^\/api\/optimize-route/, // Optimize route
+    // /^\/api\/service-areas/, // Manage service areas
+    // /^\/api\/stats/, // View authority stats
+    //  /^\/api\/profile/,
+    //   /^\/api\/my-tasks/,
   ],
   admin: [
     /^\/api\/admin/, // All admin routes
