@@ -15,9 +15,15 @@ export default function VerificationHistoryPage() {
     setStatusFilter,
   } = useVolunteerStore();
 
+  // Initial fetch
   useEffect(() => {
     fetchHistoryReports(statusFilter);
   }, []);
+
+  // Re-fetch when filter changes
+  useEffect(() => {
+    fetchHistoryReports(statusFilter, 1); // Reset to page 1 when filter changes
+  }, [statusFilter, fetchHistoryReports]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,7 +115,9 @@ export default function VerificationHistoryPage() {
           </div>
         ) : historyReports.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-slate-400">No verification history found</p>
+            <p className="text-slate-400">
+              No {statusFilter.toLowerCase()} reports found
+            </p>
           </div>
         ) : (
           <div className="grid gap-4">
