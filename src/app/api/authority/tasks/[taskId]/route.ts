@@ -122,8 +122,12 @@ export async function PATCH(
       );
     }
     const userId = user.id;
+
+    // ✅ FIX: Don't destructure here, keep the entire body
     const body: TaskActionRequest = await req.json();
-    const { action, ...data } = body;
+    const { action } = body;
+
+    console.log("📝 Received request:", JSON.stringify(body, null, 2));
 
     if (!userId) {
       return NextResponse.json(
@@ -172,14 +176,30 @@ export async function PATCH(
         break;
 
       case "schedule":
-        if (!data.scheduledFor) {
+        // ✅ FIX: Access scheduledFor from body, not data
+        console.log("📅 Schedule data:", {
+          scheduledFor: body.scheduledFor,
+          type: typeof body.scheduledFor,
+        });
+
+        if (!body.scheduledFor) {
           return NextResponse.json(
             { success: false, error: "Scheduled time required" },
             { status: 400 }
           );
         }
+
+        // Validate the date
+        const scheduledDate = new Date(body.scheduledFor);
+        if (isNaN(scheduledDate.getTime())) {
+          return NextResponse.json(
+            { success: false, error: "Invalid date format" },
+            { status: 400 }
+          );
+        }
+
         updateData = {
-          scheduledFor: new Date(data.scheduledFor),
+          scheduledFor: scheduledDate,
           status: "SCHEDULED",
         };
         message = "Task scheduled";
@@ -203,7 +223,6 @@ export async function PATCH(
         break;
 
       case "complete":
-        // ✅ FIXED: Handle missing startedAt properly
         if (!task.startedAt) {
           return NextResponse.json(
             { success: false, error: "Task must be started before completing" },
@@ -211,7 +230,6 @@ export async function PATCH(
           );
         }
 
-        // ✅ FIXED: Calculate completion time correctly
         const completionTime = Math.floor(
           (Date.now() - task.startedAt.getTime()) / (1000 * 60)
         ); // minutes
@@ -229,8 +247,8 @@ export async function PATCH(
         updateData = {
           completedAt: new Date(),
           status: "COMPLETED",
-          collectionProof: data.collectionProof || [],
-          notes: data.notes || null,
+          collectionProof: body.collectionProof || [],
+          notes: body.notes || null,
           actualTime: completionTime,
         };
         message = "Task completed successfully";
@@ -240,7 +258,7 @@ export async function PATCH(
         updateData = {
           cancelledAt: new Date(),
           status: "CANCELLED",
-          notes: data.reason || null,
+          notes: body.reason || null,
         };
         message = "Task cancelled";
         break;
@@ -260,6 +278,8 @@ export async function PATCH(
         );
     }
 
+    console.log("💾 Update data:", JSON.stringify(updateData, null, 2));
+
     const updatedTask = await prisma.task.update({
       where: { id: taskId },
       data: updateData,
@@ -277,8 +297,10 @@ export async function PATCH(
       },
     });
 
-    // ✅ FIXED: Send notification for all actions
-    await sendTaskNotification(taskId, action, task.reportId, userId, data);
+    // Send notification for all actions
+    await sendTaskNotification(taskId, action, task.reportId, userId, body);
+
+    console.log("✅ Task updated successfully:", updatedTask.id);
 
     return NextResponse.json({
       success: true,
@@ -286,7 +308,7 @@ export async function PATCH(
       data: { task: updatedTask },
     });
   } catch (error) {
-    console.error("Update task error:", error);
+    console.error("❌ Update task error:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }
@@ -294,7 +316,6 @@ export async function PATCH(
   }
 }
 
-// ✅ IMPROVED: Better stats updating
 async function updateAuthorityStats(
   authorityId: string,
   completionTime: number
@@ -317,7 +338,6 @@ async function updateAuthorityStats(
 
     const totalTasks = user.tasksCompleted + 1;
 
-    // Calculate new average completion time
     let newAvgTime = completionTime;
     if (user.avgCompletionTime && user.tasksCompleted > 0) {
       newAvgTime = Math.round(
@@ -326,7 +346,6 @@ async function updateAuthorityStats(
       );
     }
 
-    // Calculate completion rate (simplified)
     const newCompletionRate = Math.min(
       100,
       (totalTasks / (user.maxTasksPerDay || 10)) * 100
@@ -349,7 +368,6 @@ async function updateAuthorityStats(
   }
 }
 
-// ✅ FIXED: Better points awarding with error handling
 async function awardPointsToReporter(
   reportId: string,
   points: number
@@ -386,7 +404,6 @@ async function awardPointsToReporter(
   }
 }
 
-// Improved notification system
 async function sendTaskNotification(
   taskId: string,
   action: string,
