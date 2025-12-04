@@ -12,6 +12,7 @@ export default function LeaderboardPage() {
 
   type CityCommunity = {
     name: string;
+    locality: string; // Added locality field
     impactScore: number;
     validatedCount: number;
     totalReports: number;
@@ -22,6 +23,7 @@ export default function LeaderboardPage() {
     id: string;
     name: string | null;
     points: number;
+    locality?: string; // Added optional locality field for users
   };
 
   const [topCityCommunity, setTopCityCommunity] =
@@ -172,6 +174,11 @@ export default function LeaderboardPage() {
                 <p className="text-3xl text-emerald-400">
                   {topCityCommunity.name}
                 </p>
+                {topCityCommunity.locality && (
+                  <p className="text-slate-300 mt-1">
+                    Locality: {topCityCommunity.locality}
+                  </p>
+                )}
 
                 <div className="flex gap-6 mt-4">
                   <div>
@@ -263,6 +270,9 @@ export default function LeaderboardPage() {
                         <th className="px-6 py-3 text-left text-emerald-400">
                           City / Community
                         </th>
+                        <th className="px-6 py-3 text-left text-emerald-400">
+                          Locality
+                        </th>
                         <th className="px-6 py-3 text-right text-emerald-400">
                           Impact
                         </th>
@@ -286,6 +296,10 @@ export default function LeaderboardPage() {
                           </td>
 
                           <td className="px-6 py-4 text-white">{c.name}</td>
+
+                          <td className="px-6 py-4 text-slate-300">
+                            {c.locality || "N/A"}
+                          </td>
 
                           <td className="px-6 py-4 text-right text-emerald-400">
                             {c.impactScore}
@@ -339,6 +353,11 @@ export default function LeaderboardPage() {
                           <div className="text-white font-medium truncate">
                             {user.name || "Anonymous"}
                           </div>
+                          {user.locality && (
+                            <div className="text-slate-400 text-xs truncate mt-1">
+                              {user.locality}
+                            </div>
+                          )}
                         </div>
 
                         <div className="pt-2 border-t border-slate-600 w-full">
@@ -362,6 +381,9 @@ export default function LeaderboardPage() {
                       </th>
                       <th className="px-6 py-3 text-left text-emerald-400">
                         User
+                      </th>
+                      <th className="px-6 py-3 text-left text-emerald-400">
+                        Locality
                       </th>
                       <th className="px-6 py-3 text-right text-emerald-400">
                         Points
@@ -387,6 +409,10 @@ export default function LeaderboardPage() {
 
                         <td className="px-6 py-4 text-white">
                           {u.name || "Anonymous"}
+                        </td>
+
+                        <td className="px-6 py-4 text-slate-300">
+                          {u.locality || "N/A"}
                         </td>
 
                         <td className="px-6 py-4 text-right text-emerald-400">
