@@ -19,6 +19,7 @@ model User {
   role                    Role                   @default(user)
   city                    String?
   state                   String?
+  community               String?
   emailVerified           Boolean                @default(false)
   verificationToken       String?                @unique
   verificationTokenExpiry DateTime?
