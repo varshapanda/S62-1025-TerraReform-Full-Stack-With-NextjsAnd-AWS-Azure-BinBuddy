@@ -183,18 +183,38 @@ function getTaskPriority(category: string): Priority {
 --------------------------------------------------------- */
 export async function POST(req: NextRequest) {
   try {
+    console.log("\n============= VERIFICATION REQUEST START =============");
+
     const { success, user } = verifyToken(req);
-    if (!success || !user) return sendError("Unauthorized", "AUTH_ERROR", 401);
+    if (!success || !user) {
+      console.error("❌ AUTH FAILED");
+      return sendError("Unauthorized", "AUTH_ERROR", 401);
+    }
+
+    console.log("✅ User authenticated:", user.id);
 
     const body = await req.json();
     const { reportId, status, verificationNote } = body;
 
+    console.log("📝 Verification Request:", {
+      reportId,
+      status,
+      userId: user.id,
+      hasNote: !!verificationNote,
+    });
+
     if (!reportId || !["VERIFIED", "REJECTED"].includes(status)) {
+      console.error("❌ INVALID BODY:", { reportId, status });
       return sendError("Invalid request body", "VALIDATION_ERROR", 400);
     }
 
+    // CHECK REDIS ASSIGNMENT
+    console.log("🔍 Checking Redis assignment...");
     const isAssigned = await assignmentManager.isAssigned(reportId, user.id);
+    console.log("📊 Redis assignment result:", isAssigned);
+
     if (!isAssigned) {
+      console.error("❌ NOT ASSIGNED in Redis:", { reportId, userId: user.id });
       return sendError(
         "You are not assigned to this report",
         "AUTH_ERROR",
@@ -202,29 +222,85 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("✅ Redis assignment check passed");
+
     const result = await prisma.$transaction(async (tx) => {
+      // CHECK DB ASSIGNMENT
+      console.log("🔍 Checking DB assignment...");
       const assignment = await tx.assignment.findUnique({
         where: { reportId_volunteerId: { reportId, volunteerId: user.id } },
       });
 
-      if (!assignment) throw new Error("Assignment not found");
-      if (assignment.status === "COMPLETED")
-        throw new Error("Already verified");
+      console.log(
+        "📊 DB assignment:",
+        assignment
+          ? {
+              id: assignment.id,
+              status: assignment.status,
+              reportId: assignment.reportId,
+              volunteerId: assignment.volunteerId,
+            }
+          : "NOT FOUND"
+      );
 
+      if (!assignment) {
+        console.error("❌ ASSIGNMENT NOT FOUND IN DB");
+        throw new Error("Assignment not found");
+      }
+
+      if (assignment.status === "COMPLETED") {
+        console.error("❌ ALREADY COMPLETED");
+        throw new Error("Already verified");
+      }
+
+      console.log("✅ DB assignment check passed");
+
+      // CHECK REPORT
+      console.log("🔍 Checking report...");
       const report = await tx.report.findUnique({
         where: { id: reportId },
       });
 
-      if (!report) throw new Error("Report not found");
-      if (report.status !== "PENDING")
-        throw new Error("Report already finalized");
+      console.log(
+        "📊 Report:",
+        report
+          ? {
+              id: report.id,
+              status: report.status,
+              category: report.category,
+            }
+          : "NOT FOUND"
+      );
 
+      if (!report) {
+        console.error("❌ REPORT NOT FOUND");
+        throw new Error("Report not found");
+      }
+
+      if (report.status !== "PENDING") {
+        console.error("❌ REPORT NOT PENDING, status:", report.status);
+        throw new Error("Report already finalized");
+      }
+
+      console.log("✅ Report check passed");
+
+      // CHECK DUPLICATE
+      console.log("🔍 Checking for duplicate verification...");
       const existing = await tx.verification.findUnique({
         where: { reportId_volunteerId: { reportId, volunteerId: user.id } },
       });
 
-      if (existing) throw new Error("Duplicate verification");
+      console.log("📊 Existing verification:", existing ? "FOUND" : "NONE");
 
+      if (existing) {
+        console.error("❌ DUPLICATE VERIFICATION");
+        throw new Error("Duplicate verification");
+      }
+
+      console.log("✅ No duplicate verification found");
+
+      // CREATE VERIFICATION
+      console.log("💾 Creating verification record...");
       await tx.verification.create({
         data: {
           reportId,
@@ -233,20 +309,31 @@ export async function POST(req: NextRequest) {
           verificationNote: verificationNote ?? null,
         },
       });
+      console.log("✅ Verification record created");
 
+      // UPDATE ASSIGNMENT
+      console.log("💾 Updating assignment status...");
       await tx.assignment.update({
         where: { reportId_volunteerId: { reportId, volunteerId: user.id } },
         data: { status: "COMPLETED", completedAt: new Date() },
       });
+      console.log("✅ Assignment updated to COMPLETED");
 
+      // COUNT VERIFICATIONS
       const count = await tx.verification.count({
         where: { reportId, decision: status },
       });
 
+      console.log(`📊 Total ${status} verifications for this report:`, count);
+
       if (count < VERIFICATION_THRESHOLD) {
+        console.log("⏳ Threshold not reached yet");
         return { count, thresholdReached: false, authorityTaskCreated: false };
       }
 
+      console.log("✅ Threshold reached! Finalizing report...");
+
+      // UPDATE REPORT STATUS
       await tx.report.update({
         where: { id: reportId },
         data: {
@@ -257,8 +344,11 @@ export async function POST(req: NextRequest) {
           rejectionReason: status === "REJECTED" ? verificationNote : null,
         },
       });
+      console.log(`✅ Report status updated to ${status}`);
 
+      // AWARD POINTS
       if (report.reporterId) {
+        console.log("🎁 Awarding points to reporter...");
         await tx.user.update({
           where: { id: report.reporterId },
           data: { points: { increment: POINTS_PER_VERIFICATION } },
@@ -276,13 +366,18 @@ export async function POST(req: NextRequest) {
             rank: 0,
           },
         });
+        console.log(`✅ ${POINTS_PER_VERIFICATION} points awarded`);
       }
 
+      // EXPIRE OTHER ASSIGNMENTS
+      console.log("⏰ Expiring other assignments...");
       await tx.assignment.updateMany({
         where: { reportId, status: { in: ["PENDING", "VIEWED"] } },
         data: { status: "EXPIRED" },
       });
+      console.log("✅ Other assignments expired");
 
+      // CREATE TASK IF VERIFIED
       if (status === "VERIFIED") {
         console.log("\n================ CREATE TASK START ==================");
 
@@ -294,7 +389,6 @@ export async function POST(req: NextRequest) {
           report.locality || ""
         );
 
-        // ❌ If still no authority -> DO NOT ASSIGN
         if (!bestAuthority) {
           console.log("❌ NO AUTHORITY VALID → Task will remain PENDING");
         }
@@ -333,6 +427,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        console.log("✅ Task created successfully");
         console.log("================ CREATE TASK END ==================\n");
 
         return { count, thresholdReached: true, authorityTaskCreated: true };
@@ -341,20 +436,41 @@ export async function POST(req: NextRequest) {
       return { count, thresholdReached: true, authorityTaskCreated: false };
     });
 
-    await assignmentManager.completeAssignment(reportId, user.id);
+    console.log("✅ Transaction completed successfully");
 
+    // UPDATE REDIS
+    console.log("📤 Updating Redis state...");
+    await assignmentManager.completeAssignment(reportId, user.id);
+    console.log("✅ Redis updated");
+
+    // SEND NOTIFICATIONS
     if (result.thresholdReached) {
+      console.log("📢 Sending real-time notifications...");
       const volunteers = await assignmentManager.expireReport(reportId);
       realtimeEmitter.notifyMultiple(volunteers, {
         type: "report_verified",
         data: { reportId, status },
         timestamp: Date.now(),
       });
+      console.log(`✅ Notified ${volunteers.length} volunteers`);
     }
+
+    console.log("============= VERIFICATION REQUEST END =============\n");
 
     return sendSuccess(result);
   } catch (error) {
-    console.error("❌ Verification error:", error);
+    console.error("\n❌❌❌ VERIFICATION ERROR ❌❌❌");
+    console.error("Error:", error);
+    console.error(
+      "Error message:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "No stack trace"
+    );
+    console.error("❌❌❌ END ERROR ❌❌❌\n");
+
     const msg = error instanceof Error ? error.message : "Verification failed";
     return sendError(msg, "VERIFICATION_ERROR", 400);
   }
