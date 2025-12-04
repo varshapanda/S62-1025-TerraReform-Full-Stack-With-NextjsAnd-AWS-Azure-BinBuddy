@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { handleError } from "@/lib/errorHandler";
 import { sendSuccess, sendError } from "@/lib/responseHandler";

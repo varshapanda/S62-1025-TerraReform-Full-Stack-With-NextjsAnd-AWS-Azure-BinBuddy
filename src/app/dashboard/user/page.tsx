@@ -31,7 +31,6 @@ export default function UserDashboardPage() {
     fetchReports,
     setShowVolunteerModal,
     submitVolunteerRequest,
-    resetVolunteerState,
   } = useUserStore();
 
   useEffect(() => {
@@ -208,7 +207,6 @@ export default function UserDashboardPage() {
                     <div className="flex items-start justify-between gap-4">
                       {steps.map((step, index) => {
                         const Icon = step.icon;
-                        const isActive = step.status === activeReport.status;
 
                         return (
                           <div

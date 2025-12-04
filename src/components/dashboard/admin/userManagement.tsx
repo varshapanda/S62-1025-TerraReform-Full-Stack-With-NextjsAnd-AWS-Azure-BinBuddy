@@ -30,14 +30,15 @@ export default function UserManagement() {
   };
 
   // ← Added delete handler
-  const handleDelete = (userId: number, userName: string, userRole: string) => {
-    const confirmMessage = `⚠️ Delete user "${userName}"?\n\nThis will:\n- Remove from database\n- ${
+  const handleDelete = (userId: string, userName: string, userRole: string) => {
+    const confirmMessage = `Delete user "${userName}"?\n\nThis will:\n- Remove from database\n- ${
       userRole === "volunteer"
         ? "Remove from Redis (volunteer system)"
         : "Delete all user data"
     }\n- Delete all their reports & assignments\n\nThis action CANNOT be undone!`;
 
     if (confirm(confirmMessage)) {
+      // deleteUser expects a string id
       deleteUser(userId);
     }
   };

@@ -23,8 +23,7 @@ export default function VerifyReportsPage() {
   } = useVolunteerStore();
 
   const { connected } = useRealtimeAssignments(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    (reportId) => {
+    (_reportId) => {
       console.log("📨 New report assigned");
       fetchPendingReports();
     },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Plus, X, Navigation } from "lucide-react";
+import { Plus, X, Navigation } from "lucide-react";
 
 export type VehicleType = "BIKE" | "AUTO" | "SMALL_TRUCK" | "TRUCK" | "OTHER";
 
@@ -156,7 +156,7 @@ export default function ProfileSetup({ onSubmit }: ProfileSetupProps) {
     if (!validate()) return;
 
     setLoading(true);
-    const success = await onSubmit(formData);
+    await onSubmit(formData);
     setLoading(false);
   };
 

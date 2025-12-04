@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
-import { TaskStatus, Priority } from "@prisma/client";
+import { TaskStatus } from "@prisma/client";
 
 // Define TypeScript interfaces
 interface TaskActionRequest {
@@ -386,13 +386,13 @@ async function awardPointsToReporter(
   }
 }
 
-// ✅ FIXED: Improved notification system
+// Improved notification system
 async function sendTaskNotification(
   taskId: string,
   action: string,
-  reportId: string,
+  _reportId: string,
   authorityId: string,
-  data: NotificationData
+  _data: NotificationData
 ): Promise<void> {
   try {
     const task = await prisma.task.findUnique({

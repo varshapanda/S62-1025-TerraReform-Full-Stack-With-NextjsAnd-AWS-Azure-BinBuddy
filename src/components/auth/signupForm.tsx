@@ -13,13 +13,10 @@ import {
   EyeOff,
 } from "lucide-react";
 import { indianStates, getCitiesByState } from "@/lib/location";
-import { useAuthStore } from "@/store/authStore";
 import { useUIStore } from "@/store/uiStore";
 
 export default function SignupForm() {
   const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
-  const getDashboardRoute = useAuthStore((state) => state.getDashboardRoute);
   const addNotification = useUIStore((state) => state.addNotification);
 
   const [loading, setLoading] = useState(false);

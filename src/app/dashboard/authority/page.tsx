@@ -4,14 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
-import {
-  Truck,
-  MapPin,
-  Clock,
-  TrendingUp,
-  Calendar,
-  AlertCircle,
-} from "lucide-react";
+import { Truck, MapPin, TrendingUp, Calendar, AlertCircle } from "lucide-react";
 import TaskCard from "@/components/tasks/TaskCard";
 import TaskModal from "@/components/tasks/TaskModal";
 import TaskFilters from "@/components/tasks/TaskFilters";

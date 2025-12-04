@@ -2,15 +2,7 @@
 "use client";
 
 import { useState, ChangeEvent } from "react";
-import {
-  X,
-  MapPin,
-  User,
-  Calendar,
-  Clock,
-  Truck,
-  Image as ImageIcon,
-} from "lucide-react";
+import { X, MapPin, User, Calendar, Image as ImageIcon } from "lucide-react";
 
 interface TaskLocation {
   address: string;

@@ -19,11 +19,6 @@ interface CreateTaskRequest {
   reportId: string;
 }
 
-interface UserQueryResult {
-  role: string;
-  isProfileComplete: boolean;
-}
-
 function isValidPriority(priority: string | null): priority is Priority {
   return ["URGENT", "HIGH", "MEDIUM", "LOW"].includes(priority || "");
 }

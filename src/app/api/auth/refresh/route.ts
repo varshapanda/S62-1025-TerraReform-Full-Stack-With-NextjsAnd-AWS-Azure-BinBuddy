@@ -1,4 +1,4 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     let decoded;
     try {
       decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as {
-        id: number;
+        id: string;
         type: string;
       };
     } catch (error) {

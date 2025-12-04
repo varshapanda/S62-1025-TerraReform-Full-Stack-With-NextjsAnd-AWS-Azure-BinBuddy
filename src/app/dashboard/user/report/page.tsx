@@ -39,7 +39,6 @@ export default function ReportPage() {
     showMap,
     setFormData,
     setAddress,
-    setError,
     setLocationMode,
     setMapLoaded,
     setShowMap,

@@ -1,7 +1,7 @@
 // src/app/dashboard/authority/profile/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import { useAuthorityStore } from "@/store/authorityStore";
@@ -160,7 +160,7 @@ export default function AuthorityProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {profile.serviceAreas.map((area, index) => (
                 <div
-                  key={area.id || index}
+                  key={index}
                   className="p-4 bg-slate-900/50 border border-slate-600 rounded-lg"
                 >
                   <p className="text-white font-semibold">

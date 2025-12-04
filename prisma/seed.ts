@@ -1,11 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, TaskStatus, ReportStatus } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 const prisma = new PrismaClient();
 const REFRESH_TOKEN_SECRET =
-  process.env.JWT_SECRET + "_refresh" || "your-refresh-secret";
+  (process.env.JWT_SECRET || "your-jwt-secret") + "_refresh";
 
 async function main() {
   console.log("Starting seed...");
@@ -115,7 +115,7 @@ async function main() {
   });
   console.log("Created revoked refresh token for user3");
 
-  // Create Report 1 - USING NEW SCHEMA
+  // Create Report 1
   const report1 = await prisma.report.create({
     data: {
       imageUrl: "https://example.com/waste-plastic.jpg",
@@ -124,16 +124,14 @@ async function main() {
       lat: 28.6315,
       lng: 77.2167,
       note: "Plastic bottles and packaging near food court",
-      location: "Connaught Place, New Delhi",
-      wasteType: "plastic",
-      wasteCategory: "recyclable",
-      status: "VERIFIED",
-      reporterId: user1.id, // ← CHANGED from userId to reporterId
+      address: "Connaught Place, New Delhi",
+      status: ReportStatus.VERIFIED,
+      reporterId: user1.id,
     },
   });
   console.log("Created report:", report1.id);
 
-  // Create Report 2 - USING NEW SCHEMA
+  // Create Report 2
   const report2 = await prisma.report.create({
     data: {
       imageUrl: "https://example.com/waste-organic.jpg",
@@ -142,16 +140,14 @@ async function main() {
       lat: 28.6519,
       lng: 77.19,
       note: "Food waste and organic material near market area",
-      location: "Karol Bagh, New Delhi",
-      wasteType: "organic",
-      wasteCategory: "non-recyclable",
-      status: "VERIFIED",
-      reporterId: user2.id, // ← CHANGED from userId to reporterId
+      address: "Karol Bagh, New Delhi",
+      status: ReportStatus.VERIFIED,
+      reporterId: user2.id,
     },
   });
   console.log("Created report:", report2.id);
 
-  // Create Report 3 - USING NEW SCHEMA
+  // Create Report 3
   const report3 = await prisma.report.create({
     data: {
       imageUrl: "https://example.com/waste-metal.jpg",
@@ -160,36 +156,34 @@ async function main() {
       lat: 28.6129,
       lng: 77.2295,
       note: "Metal cans and containers near monument",
-      location: "India Gate, New Delhi",
-      wasteType: "metal",
-      wasteCategory: "recyclable",
-      status: "PENDING",
-      reporterId: user3.id, // ← CHANGED from userId to reporterId
+      address: "India Gate, New Delhi",
+      status: ReportStatus.PENDING,
+      reporterId: user3.id,
     },
   });
   console.log("Created report:", report3.id);
 
-  // Create Task 1 (available)
+  // Create Task 1 (PENDING)
   const task1 = await prisma.task.create({
     data: {
       reportId: report1.id,
-      status: "available",
+      status: TaskStatus.PENDING,
     },
   });
   console.log("Created task:", task1.id);
 
-  // Create Task 2 (claimed)
+  // Create Task 2 (ASSIGNED)
   const task2 = await prisma.task.create({
     data: {
       reportId: report2.id,
-      status: "claimed",
-      claimedBy: user3.id,
-      claimedAt: new Date(),
+      status: TaskStatus.ASSIGNED,
+      assignedToId: user3.id,
+      startedAt: new Date(),
     },
   });
   console.log("Created task:", task2.id);
 
-  // Create Reward 1
+  // Create Reward entries
   await prisma.reward.create({
     data: {
       userId: user1.id,
@@ -200,7 +194,6 @@ async function main() {
   });
   console.log("Created reward for user1");
 
-  // Create Reward 2
   await prisma.reward.create({
     data: {
       userId: user2.id,
@@ -211,18 +204,17 @@ async function main() {
   });
   console.log("Created reward for user2");
 
-  // Create Reward 3
   await prisma.reward.create({
     data: {
       userId: user3.id,
       points: 15,
       action: "claim_task",
-      description: "Claimed collection task at Karol Bagh",
+      description: "Claimed collection task",
     },
   });
   console.log("Created reward for user3");
 
-  // Create Notification 1
+  // Create Notifications
   await prisma.notification.create({
     data: {
       userId: user1.id,
@@ -232,9 +224,6 @@ async function main() {
       read: false,
     },
   });
-  console.log("Created notification for user1");
-
-  // Create Notification 2
   await prisma.notification.create({
     data: {
       userId: user2.id,
@@ -244,9 +233,6 @@ async function main() {
       read: false,
     },
   });
-  console.log("Created notification for user2");
-
-  // Create Notification 3
   await prisma.notification.create({
     data: {
       userId: user3.id,
@@ -256,7 +242,7 @@ async function main() {
       read: true,
     },
   });
-  console.log("Created notification for user3");
+  console.log("Created notifications");
 
   // Create Images for reports
   const images = await prisma.image.createMany({

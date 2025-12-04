@@ -61,7 +61,7 @@ async function fixAssignments() {
       orderBy: { createdAt: "asc" },
       select: { id: true, category: true },
     });
-    console.log(`✅ Found ${pendingReports.count} pending reports`);
+    console.log(`✅ Found ${pendingReports.length} pending reports`);
 
     // 7. Assign each report to volunteers
     console.log("\n🎯 Step 7: Creating new assignments...");

@@ -2,12 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assignmentManager } from "@/lib/assignment/redisManager"; // import the instance
-
-type Params = {
-  params: {
-    id: string;
-  };
-};
+import { assignReportToVolunteers } from "@/lib/workers/assignmentWorker";
 
 export async function PATCH(
   req: NextRequest,

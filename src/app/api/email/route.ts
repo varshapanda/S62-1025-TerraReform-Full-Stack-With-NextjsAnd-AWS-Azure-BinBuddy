@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import sendgrid from "@sendgrid/mail";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
