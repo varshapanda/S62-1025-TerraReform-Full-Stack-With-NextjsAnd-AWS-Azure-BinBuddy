@@ -2,16 +2,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Define the enum matching your Prisma schema
-enum VehicleType {
-  BIKE = "BIKE",
-  AUTO = "AUTO",
-  SMALL_TRUCK = "SMALL_TRUCK",
-  TRUCK = "TRUCK",
-  OTHER = "OTHER",
-}
+// ------------------------------
+// Types
+// ------------------------------
 
-// Define TypeScript interfaces for type safety
+type VehicleType = "BIKE" | "AUTO" | "SMALL_TRUCK" | "TRUCK" | "OTHER";
+
 interface ServiceAreaInput {
   city: string;
   state: string;
@@ -24,43 +20,20 @@ interface UpdateProfileRequest {
   baseLng: number;
   city: string;
   state: string;
-  serviceRadius?: number;
-  vehicleType?: VehicleType | null; // Use enum type
-  maxTasksPerDay?: number;
-  serviceAreas?: ServiceAreaInput[];
+  serviceRadius: number;
+  vehicleType: VehicleType;
+  maxTasksPerDay: number;
+  serviceAreas: ServiceAreaInput[];
 }
 
-interface AuthorityProfileResponse {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  baseLat: number | null;
-  baseLng: number | null;
-  serviceRadius: number | null;
-  vehicleType: VehicleType | null; // Use enum type
-  maxTasksPerDay: number | null;
-  tasksCompleted: number;
-  completionRate: number;
-  avgCompletionTime: number | null;
-  isProfileComplete: boolean;
-  city: string | null;
-  state: string | null;
-  serviceAreas: Array<{
-    id: string;
-    city: string;
-    state: string;
-    locality: string;
-    priority: number;
-    createdAt: Date;
-  }>;
-}
+// ------------------------------
+// GET: Fetch authority profile
+// ------------------------------
 
 export async function GET(req: NextRequest) {
   try {
     const userId = req.headers.get("x-user-id");
 
-    // Authentication check
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
@@ -68,7 +41,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Fetch user profile with service areas
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -81,12 +53,13 @@ export async function GET(req: NextRequest) {
         serviceRadius: true,
         vehicleType: true,
         maxTasksPerDay: true,
-        tasksCompleted: true,
-        completionRate: true,
-        avgCompletionTime: true,
-        isProfileComplete: true,
         city: true,
         state: true,
+        isProfileComplete: true,
+        tasksCompleted: true,
+        avgCompletionTime: true,
+        completionRate: true,
+
         serviceAreas: {
           select: {
             id: true,
@@ -101,41 +74,34 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Validate user exists and is an authority
     if (!user || user.role !== "authority") {
       return NextResponse.json(
-        {
-          success: false,
-          error: "User not found or does not have authority privileges",
-        },
+        { success: false, error: "User not found or not authority" },
         { status: 404 }
       );
     }
 
-    // Return profile data
     return NextResponse.json({
       success: true,
-      data: {
-        profile: user as AuthorityProfileResponse,
-      },
+      data: { profile: user },
     });
-  } catch (error) {
-    console.error("Get authority profile error:", error);
+  } catch (err) {
+    console.error("GET /authority/profile error:", err);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Internal server error while fetching profile",
-      },
+      { success: false, error: "Server error fetching profile" },
       { status: 500 }
     );
   }
 }
 
+// ------------------------------
+// PUT: Update authority profile
+// ------------------------------
+
 export async function PUT(req: NextRequest) {
   try {
     const userId = req.headers.get("x-user-id");
 
-    // Authentication check
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
@@ -143,46 +109,23 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Parse and validate request body
-    const body: UpdateProfileRequest = await req.json();
-    const {
-      baseLat,
-      baseLng,
-      city,
-      state,
-      serviceRadius = 10,
-      vehicleType,
-      maxTasksPerDay = 10,
-      serviceAreas = [],
-    } = body;
+    const body = (await req.json()) as UpdateProfileRequest;
 
-    // Validate required fields
+    // ------------------------------
+    // Validation
+    // ------------------------------
+
     const validationErrors: string[] = [];
 
-    if (typeof baseLat !== "number" || baseLat < -90 || baseLat > 90) {
-      validationErrors.push("Valid base latitude is required (-90 to 90)");
+    if (typeof body.baseLat !== "number" || typeof body.baseLng !== "number") {
+      validationErrors.push("Location is required (GPS)");
     }
 
-    if (typeof baseLng !== "number" || baseLng < -180 || baseLng > 180) {
-      validationErrors.push("Valid base longitude is required (-180 to 180)");
-    }
+    if (!body.city?.trim()) validationErrors.push("City is required");
+    if (!body.state?.trim()) validationErrors.push("State is required");
 
-    if (!city || typeof city !== "string" || city.trim().length === 0) {
-      validationErrors.push("City is required");
-    }
-
-    if (!state || typeof state !== "string" || state.trim().length === 0) {
-      validationErrors.push("State is required");
-    }
-
-    // Validate vehicleType if provided
-    if (vehicleType !== undefined && vehicleType !== null) {
-      const validVehicleTypes = Object.values(VehicleType);
-      if (!validVehicleTypes.includes(vehicleType as VehicleType)) {
-        validationErrors.push(
-          `vehicleType must be one of: ${validVehicleTypes.join(", ")}`
-        );
-      }
+    if (!Array.isArray(body.serviceAreas) || body.serviceAreas.length === 0) {
+      validationErrors.push("At least one service area is required");
     }
 
     if (validationErrors.length > 0) {
@@ -196,57 +139,51 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Update user profile with validated data
-    const updatedUser = await prisma.user.update({
+    // ------------------------------
+    // Update User Profile
+    // ------------------------------
+
+    await prisma.user.update({
       where: { id: userId },
       data: {
-        baseLat,
-        baseLng,
-        city: city.trim(),
-        state: state.trim(),
-        serviceRadius: Math.min(Math.max(serviceRadius, 1), 100), // Between 1-100km
-        vehicleType: vehicleType || null, // Fixed: use the parameter, not the enum type
-        maxTasksPerDay: Math.min(Math.max(maxTasksPerDay, 1), 50), // Between 1-50 tasks/day
+        baseLat: body.baseLat,
+        baseLng: body.baseLng,
+        city: body.city.trim(),
+        state: body.state.trim(),
+        serviceRadius: Math.min(Math.max(body.serviceRadius, 1), 100),
+        vehicleType: body.vehicleType,
+        maxTasksPerDay: Math.min(Math.max(body.maxTasksPerDay, 1), 50),
         isProfileComplete: true,
       },
     });
 
-    // Update service areas if provided
-    if (Array.isArray(serviceAreas) && serviceAreas.length > 0) {
-      // Validate service areas
-      const validServiceAreas = serviceAreas.filter(
-        (area): area is ServiceAreaInput =>
-          typeof area.city === "string" &&
-          area.city.trim().length > 0 &&
-          typeof area.state === "string" &&
-          area.state.trim().length > 0 &&
-          typeof area.locality === "string" &&
-          area.locality.trim().length > 0
-      );
+    // ------------------------------
+    // Update service areas
+    // ------------------------------
 
-      if (validServiceAreas.length > 0) {
-        // Delete existing service areas in a transaction
-        await prisma.$transaction([
-          prisma.authorityServiceArea.deleteMany({
-            where: { authorityId: userId },
-          }),
-          ...validServiceAreas.map((area) =>
-            prisma.authorityServiceArea.create({
-              data: {
-                authorityId: userId,
-                city: area.city.trim(),
-                state: area.state.trim(),
-                locality: area.locality.trim(),
-                priority: Math.min(Math.max(area.priority || 1, 1), 2), // Priority 1 or 2
-              },
-            })
-          ),
-        ]);
-      }
-    }
+    // Delete old service areas
+    await prisma.authorityServiceArea.deleteMany({
+      where: { authorityId: userId },
+    });
 
-    // Fetch updated profile with service areas for response
-    const completeProfile = await prisma.user.findUnique({
+    // Create new ones
+    const formattedAreas = body.serviceAreas.map((area) => ({
+      authorityId: userId,
+      city: area.city.trim(),
+      state: area.state.trim(),
+      locality: area.locality.trim(),
+      priority: area.priority && (area.priority === 2 ? 2 : 1),
+    }));
+
+    await prisma.authorityServiceArea.createMany({
+      data: formattedAreas,
+    });
+
+    // ------------------------------
+    // Return updated profile
+    // ------------------------------
+
+    const profile = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -258,12 +195,10 @@ export async function PUT(req: NextRequest) {
         serviceRadius: true,
         vehicleType: true,
         maxTasksPerDay: true,
-        tasksCompleted: true,
-        completionRate: true,
-        avgCompletionTime: true,
-        isProfileComplete: true,
         city: true,
         state: true,
+        isProfileComplete: true,
+
         serviceAreas: {
           select: {
             id: true,
@@ -281,17 +216,12 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Profile updated successfully",
-      data: {
-        profile: completeProfile as AuthorityProfileResponse,
-      },
+      data: { profile },
     });
-  } catch (error) {
-    console.error("Update authority profile error:", error);
+  } catch (err) {
+    console.error("PUT /authority/profile error:", err);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Internal server error while updating profile",
-      },
+      { success: false, error: "Server error updating profile" },
       { status: 500 }
     );
   }

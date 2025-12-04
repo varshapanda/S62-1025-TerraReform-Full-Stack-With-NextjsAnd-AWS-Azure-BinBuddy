@@ -4,7 +4,6 @@ import { create } from "zustand";
 type VehicleType = "BIKE" | "AUTO" | "SMALL_TRUCK" | "TRUCK" | "OTHER";
 
 interface ServiceArea {
-  id?: string;
   city: string;
   state: string;
   locality: string;
@@ -38,19 +37,15 @@ interface ApiResponse {
   error?: string;
 }
 
-interface UpdateProfileData {
-  baseLat?: number;
-  baseLng?: number;
-  serviceRadius?: number;
-  vehicleType?: VehicleType;
-  maxTasksPerDay?: number;
-  city?: string;
-  state?: string;
-}
-
-interface ServiceAreaApiResponse {
-  success: boolean;
-  error?: string;
+interface UpdateProfileRequest {
+  baseLat: number;
+  baseLng: number;
+  city: string;
+  state: string;
+  serviceRadius: number;
+  vehicleType: VehicleType;
+  maxTasksPerDay: number;
+  serviceAreas: ServiceArea[];
 }
 
 interface AuthorityState {
@@ -58,15 +53,12 @@ interface AuthorityState {
   loading: boolean;
   error: string | null;
 
-  // Actions
   fetchProfile: () => Promise<void>;
-  updateProfile: (data: UpdateProfileData) => Promise<boolean>;
-  addServiceArea: (area: ServiceArea) => Promise<boolean>;
-  removeServiceArea: (areaId: string) => Promise<boolean>;
+  updateProfile: (data: UpdateProfileRequest) => Promise<boolean>;
   clearProfile: () => void;
 }
 
-export const useAuthorityStore = create<AuthorityState>((set, get) => ({
+export const useAuthorityStore = create<AuthorityState>((set) => ({
   profile: null,
   loading: false,
   error: null,
@@ -74,104 +66,49 @@ export const useAuthorityStore = create<AuthorityState>((set, get) => ({
   fetchProfile: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch("/api/authority/profile");
-      const data: ApiResponse = await response.json();
+      const res = await fetch("/api/authority/profile");
+      const data: ApiResponse = await res.json();
 
       if (data.success && data.data) {
         set({ profile: data.data.profile, loading: false });
       } else {
-        set({ error: data.error || "Failed to fetch profile", loading: false });
+        set({
+          error: data.error || "Failed to fetch profile",
+          loading: false,
+        });
       }
-    } catch (error) {
-      set({ error: "Failed to fetch profile", loading: false });
+    } catch (err) {
+      set({ error: "Network error", loading: false });
     }
   },
 
-  updateProfile: async (profileData: UpdateProfileData) => {
+  updateProfile: async (data: UpdateProfileRequest) => {
     set({ loading: true, error: null });
+
     try {
-      const response = await fetch("/api/authority/profile", {
+      const res = await fetch("/api/authority/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profileData),
+        body: JSON.stringify(data),
       });
 
-      const data: ApiResponse = await response.json();
+      const json: ApiResponse = await res.json();
 
-      if (data.success && data.data) {
-        set({ profile: data.data.profile, loading: false });
+      if (json.success && json.data) {
+        set({ profile: json.data.profile, loading: false });
         return true;
-      } else {
-        set({
-          error: data.error || "Failed to update profile",
-          loading: false,
-        });
-        return false;
       }
-    } catch (error) {
-      set({ error: "Failed to update profile", loading: false });
-      return false;
-    }
-  },
 
-  addServiceArea: async (area: ServiceArea) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await fetch("/api/authority/service-areas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(area),
+      set({
+        loading: false,
+        error: json.error || "Failed to update profile",
       });
-
-      const data: ServiceAreaApiResponse = await response.json();
-
-      if (data.success) {
-        // Refresh profile to get updated service areas
-        await get().fetchProfile();
-        return true;
-      } else {
-        set({
-          error: data.error || "Failed to add service area",
-          loading: false,
-        });
-        return false;
-      }
-    } catch (error) {
-      set({ error: "Failed to add service area", loading: false });
+      return false;
+    } catch (err) {
+      set({ error: "Network error", loading: false });
       return false;
     }
   },
 
-  removeServiceArea: async (areaId: string) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await fetch(
-        `/api/authority/service-areas?id=${areaId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const data: ServiceAreaApiResponse = await response.json();
-
-      if (data.success) {
-        // Refresh profile to get updated service areas
-        await get().fetchProfile();
-        return true;
-      } else {
-        set({
-          error: data.error || "Failed to remove service area",
-          loading: false,
-        });
-        return false;
-      }
-    } catch (error) {
-      set({ error: "Failed to remove service area", loading: false });
-      return false;
-    }
-  },
-
-  clearProfile: () => {
-    set({ profile: null, error: null });
-  },
+  clearProfile: () => set({ profile: null, error: null }),
 }));

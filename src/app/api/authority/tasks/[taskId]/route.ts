@@ -144,7 +144,9 @@ export async function PATCH(
     }
 
     // Validate user can perform action
-    if (task.assignedToId !== userId && action !== "cancel") {
+    const isAuthority = user.role === "authority";
+
+    if (!isAuthority && task.assignedToId !== userId && action !== "cancel") {
       return NextResponse.json(
         { success: false, error: "Not assigned to you" },
         { status: 403 }

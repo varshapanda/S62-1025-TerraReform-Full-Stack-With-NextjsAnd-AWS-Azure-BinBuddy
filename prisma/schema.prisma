@@ -43,6 +43,7 @@ model User {
   assignedTasks           Task[]                 @relation("AssignedTasks")
   verifications           Verification[]         @relation("VolunteerVerifications")
   volunteerRequest        VolunteerRequest?
+  leaderboard             UserLeaderboard?
 
   @@index([email])
   @@index([points])

@@ -1,21 +1,19 @@
-// src/components/authority/ProfileSetup.tsx
 "use client";
 
-import { useState, ChangeEvent } from "react";
-import { MapPin, Truck, Plus, X, Navigation } from "lucide-react";
+import { useState } from "react";
+import { MapPin, Plus, X, Navigation } from "lucide-react";
 
-// Define types
-type VehicleType = "BIKE" | "AUTO" | "SMALL_TRUCK" | "TRUCK" | "OTHER";
+export type VehicleType = "BIKE" | "AUTO" | "SMALL_TRUCK" | "TRUCK" | "OTHER";
 
-interface ServiceArea {
+export interface ServiceArea {
   city: string;
   state: string;
   locality: string;
-  priority: 1 | 2;
+  priority: number;
 }
 
-interface FormData {
-  baseLocation: string;
+export interface FormData {
+  baseLocation: string; // Only for display
   city: string;
   state: string;
   pincode: string;
@@ -28,14 +26,11 @@ interface FormData {
 }
 
 interface ProfileSetupProps {
-  onSubmit: (data: FormData) => Promise<boolean>;
+  onSubmit: (payload: FormData) => Promise<boolean>;
 }
 
-type FormField = keyof Omit<FormData, "serviceAreas">;
-type ServiceAreaField = keyof ServiceArea;
-
 export default function ProfileSetup({ onSubmit }: ProfileSetupProps) {
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<FormData>({
@@ -51,24 +46,23 @@ export default function ProfileSetup({ onSubmit }: ProfileSetupProps) {
     serviceAreas: [{ city: "", state: "", locality: "", priority: 1 }],
   });
 
-  const handleInputChange = (field: FormField, value: string | number) => {
+  // -----------------------------
+  // HANDLERS
+  // -----------------------------
+
+  const updateField = (field: keyof FormData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleServiceAreaChange = (
+  const updateServiceArea = (
     index: number,
-    field: ServiceAreaField,
+    field: keyof ServiceArea,
     value: string | number
   ) => {
-    const updatedAreas = [...formData.serviceAreas];
-    updatedAreas[index] = {
-      ...updatedAreas[index],
-      [field]: value,
-    } as ServiceArea;
-    setFormData((prev) => ({ ...prev, serviceAreas: updatedAreas }));
+    const updated = [...formData.serviceAreas];
+    updated[index] = { ...updated[index], [field]: value };
+    setFormData((prev) => ({ ...prev, serviceAreas: updated }));
   };
 
   const addServiceArea = () => {
@@ -82,435 +76,228 @@ export default function ProfileSetup({ onSubmit }: ProfileSetupProps) {
   };
 
   const removeServiceArea = (index: number) => {
-    if (formData.serviceAreas.length > 1) {
-      const updatedAreas = formData.serviceAreas.filter((_, i) => i !== index);
-      setFormData((prev) => ({ ...prev, serviceAreas: updatedAreas }));
-    }
+    if (formData.serviceAreas.length === 1) return;
+    setFormData((prev) => ({
+      ...prev,
+      serviceAreas: prev.serviceAreas.filter((_, i) => i !== index),
+    }));
   };
+
+  // -----------------------------
+  // GPS LOCATION
+  // -----------------------------
 
   const handleGetLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position: GeolocationPosition) => {
-          setFormData((prev) => ({
-            ...prev,
-            baseLat: position.coords.latitude,
-            baseLng: position.coords.longitude,
-          }));
-        },
-        (error: GeolocationPositionError) => {
-          console.warn("Geolocation error:", error);
-          setErrors((prev) => ({
-            ...prev,
-            location: "Unable to get current location",
-          }));
-        }
-      );
+    console.log("📍 Use Current Location clicked");
+
+    if (!navigator.geolocation) {
+      setErrors((prev) => ({
+        ...prev,
+        location: "Geolocation not supported.",
+      }));
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        console.log("✅ GPS Success:", pos.coords);
+
+        setFormData((prev) => ({
+          ...prev,
+          baseLat: pos.coords.latitude,
+          baseLng: pos.coords.longitude,
+        }));
+
+        // Autofill base location text for UI only
+        setFormData((prev) => ({
+          ...prev,
+          baseLocation: `Lat ${pos.coords.latitude}, Lng ${pos.coords.longitude}`,
+        }));
+      },
+      (err) => {
+        console.log("❌ GPS Error", err);
+        setErrors((prev) => ({
+          ...prev,
+          location: "Unable to fetch GPS location.",
+        }));
+      }
+    );
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  // -----------------------------
+  // VALIDATION
+  // -----------------------------
 
-    if (!formData.baseLocation.trim()) {
-      newErrors.baseLocation = "Base location is required";
-    }
-    if (!formData.city.trim()) {
-      newErrors.city = "City is required";
-    }
-    if (!formData.state.trim()) {
-      newErrors.state = "State is required";
-    }
-    if (!formData.pincode.trim()) {
-      newErrors.pincode = "Pincode is required";
-    }
+  const validate = () => {
+    const err: Record<string, string> = {};
 
-    formData.serviceAreas.forEach((area, index) => {
-      if (!area.locality.trim()) {
-        newErrors[`area_${index}_locality`] = "Locality is required";
-      }
-      if (!area.city.trim()) {
-        newErrors[`area_${index}_city`] = "City is required";
-      }
-      if (!area.state.trim()) {
-        newErrors[`area_${index}_state`] = "State is required";
-      }
+    if (!formData.city.trim()) err.city = "City is required";
+    if (!formData.state.trim()) err.state = "State is required";
+    if (!formData.pincode.trim()) err.pincode = "Pincode is required";
+
+    if (formData.baseLat === 0 || formData.baseLng === 0)
+      err.location = "Click 'Use Current Location' to set your GPS";
+
+    formData.serviceAreas.forEach((a, i) => {
+      if (!a.locality.trim()) err[`loc_${i}`] = "Locality required";
+      if (!a.city.trim()) err[`city_${i}`] = "City required";
+      if (!a.state.trim()) err[`state_${i}`] = "State required";
     });
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(err);
+    return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = async (): Promise<void> => {
-    if (!validateForm()) return;
+  // -----------------------------
+  // SUBMIT
+  // -----------------------------
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
 
     setLoading(true);
-    try {
-      await onSubmit(formData);
-    } catch (error) {
-      console.error("Profile setup error:", error);
-    } finally {
-      setLoading(false);
-    }
+    const success = await onSubmit(formData);
+    setLoading(false);
   };
 
-  const vehicleOptions: { value: VehicleType; label: string }[] = [
-    { value: "BIKE", label: "Motorcycle" },
-    { value: "AUTO", label: "Auto Rickshaw" },
-    { value: "SMALL_TRUCK", label: "Small Truck" },
-    { value: "TRUCK", label: "Large Truck" },
-    { value: "OTHER", label: "Other" },
-  ];
-
-  const handleTextInputChange = (
-    e: ChangeEvent<HTMLInputElement>,
-    field: FormField
-  ) => {
-    handleInputChange(field, e.target.value);
-  };
-
-  const handleNumberInputChange = (
-    e: ChangeEvent<HTMLInputElement>,
-    field: FormField
-  ) => {
-    const value = e.target.value;
-    handleInputChange(field, value === "" ? 0 : parseInt(value, 10));
-  };
-
-  const handleRangeInputChange = (
-    e: ChangeEvent<HTMLInputElement>,
-    field: FormField
-  ) => {
-    handleInputChange(field, parseInt(e.target.value, 10));
-  };
-
-  const handleServiceAreaTextChange = (
-    e: ChangeEvent<HTMLInputElement>,
-    index: number,
-    field: Extract<ServiceAreaField, "city" | "state" | "locality">
-  ) => {
-    handleServiceAreaChange(index, field, e.target.value);
-  };
+  // -----------------------------
+  // UI
+  // -----------------------------
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold text-white mb-2">
-          Complete Your Authority Profile
-        </h2>
-        <p className="text-slate-400 text-lg">
-          Set up your waste collection service to start receiving tasks
-        </p>
-      </div>
+      <h2 className="text-3xl font-bold text-white text-center mb-6">
+        Complete Your Authority Profile
+      </h2>
 
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-8 space-y-8">
-        {/* Base Location */}
+      <div className="bg-slate-900 p-8 rounded-2xl space-y-8">
+        {/* ----------------- BASE LOCATION ----------------- */}
         <div>
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Base Location
-          </h3>
+          <label className="text-slate-300">Base Location *</label>
+          <input
+            type="text"
+            value={formData.baseLocation}
+            placeholder="Click 'Use Current Location'"
+            onChange={(e) => updateField("baseLocation", e.target.value)}
+            className="w-full bg-slate-800 text-white p-3 rounded-xl"
+          />
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-slate-300 mb-2">
-                Base Location Address *
-              </label>
+          <button
+            onClick={handleGetLocation}
+            className="mt-3 px-4 py-2 bg-blue-600 rounded-xl text-white flex items-center gap-2"
+          >
+            <Navigation size={16} /> Use Current Location
+          </button>
+
+          {errors.location && (
+            <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+          )}
+
+          <p className="text-green-400 text-sm mt-2">
+            Lat: {formData.baseLat} | Lng: {formData.baseLng}
+          </p>
+        </div>
+
+        {/* ----------------- CITY + STATE ----------------- */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-slate-300">City *</label>
+            <input
+              value={formData.city}
+              onChange={(e) => updateField("city", e.target.value)}
+              className="w-full bg-slate-800 text-white p-3 rounded-xl"
+            />
+            {errors.city && (
+              <p className="text-red-500 text-sm">{errors.city}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-slate-300">State *</label>
+            <input
+              value={formData.state}
+              onChange={(e) => updateField("state", e.target.value)}
+              className="w-full bg-slate-800 text-white p-3 rounded-xl"
+            />
+            {errors.state && (
+              <p className="text-red-500 text-sm">{errors.state}</p>
+            )}
+          </div>
+        </div>
+
+        {/* ----------------- PINCODE ----------------- */}
+        <div>
+          <label className="text-slate-300">Pincode *</label>
+          <input
+            value={formData.pincode}
+            onChange={(e) => updateField("pincode", e.target.value)}
+            className="w-full bg-slate-800 text-white p-3 rounded-xl"
+          />
+          {errors.pincode && (
+            <p className="text-red-500 text-sm">{errors.pincode}</p>
+          )}
+        </div>
+
+        {/* ----------------- SERVICE AREAS ----------------- */}
+        <div>
+          <h3 className="text-xl text-white mb-4">Service Areas</h3>
+
+          {formData.serviceAreas.map((a, i) => (
+            <div
+              key={i}
+              className="bg-slate-800 p-4 rounded-xl mb-3 border border-slate-700"
+            >
+              <div className="flex justify-between">
+                <h4 className="text-white">Area {i + 1}</h4>
+
+                {formData.serviceAreas.length > 1 && (
+                  <X
+                    className="text-red-400 cursor-pointer"
+                    onClick={() => removeServiceArea(i)}
+                  />
+                )}
+              </div>
+
               <input
-                type="text"
-                value={formData.baseLocation}
-                onChange={(e) => handleTextInputChange(e, "baseLocation")}
-                placeholder="e.g., Koramangala, Bengaluru"
-                className={`w-full px-4 py-3 bg-slate-900 border ${errors.baseLocation ? "border-red-500" : "border-slate-700"} rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Locality"
+                value={a.locality}
+                onChange={(e) =>
+                  updateServiceArea(i, "locality", e.target.value)
+                }
+                className="w-full bg-slate-900 text-white p-2 rounded-md mt-2"
               />
-              {errors.baseLocation && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.baseLocation}
-                </p>
-              )}
+
+              <input
+                placeholder="City"
+                value={a.city}
+                onChange={(e) => updateServiceArea(i, "city", e.target.value)}
+                className="w-full bg-slate-900 text-white p-2 rounded-md mt-2"
+              />
+
+              <input
+                placeholder="State"
+                value={a.state}
+                onChange={(e) => updateServiceArea(i, "state", e.target.value)}
+                className="w-full bg-slate-900 text-white p-2 rounded-md mt-2"
+              />
             </div>
+          ))}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-slate-300 mb-2">City *</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => handleTextInputChange(e, "city")}
-                  placeholder="e.g., Bengaluru"
-                  className={`w-full px-4 py-3 bg-slate-900 border ${errors.city ? "border-red-500" : "border-slate-700"} rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                />
-                {errors.city && (
-                  <p className="mt-1 text-sm text-red-500">{errors.city}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-2">State *</label>
-                <input
-                  type="text"
-                  value={formData.state}
-                  onChange={(e) => handleTextInputChange(e, "state")}
-                  placeholder="e.g., Karnataka"
-                  className={`w-full px-4 py-3 bg-slate-900 border ${errors.state ? "border-red-500" : "border-slate-700"} rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                />
-                {errors.state && (
-                  <p className="mt-1 text-sm text-red-500">{errors.state}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-2">Pincode *</label>
-                <input
-                  type="text"
-                  value={formData.pincode}
-                  onChange={(e) => handleTextInputChange(e, "pincode")}
-                  placeholder="e.g., 560034"
-                  className={`w-full px-4 py-3 bg-slate-900 border ${errors.pincode ? "border-red-500" : "border-slate-700"} rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                />
-                {errors.pincode && (
-                  <p className="mt-1 text-sm text-red-500">{errors.pincode}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-2">
-                Service Radius (km)
-              </label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  value={formData.serviceRadius}
-                  onChange={(e) => handleRangeInputChange(e, "serviceRadius")}
-                  className="flex-1"
-                />
-                <span className="text-white font-medium w-12">
-                  {formData.serviceRadius} km
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-slate-500">
-                Maximum distance you are willing to travel
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGetLocation}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors"
-            >
-              <Navigation className="w-4 h-4" />
-              Use Current Location
-            </button>
-          </div>
+          <button
+            onClick={addServiceArea}
+            className="w-full py-3 bg-slate-700 rounded-xl text-white flex items-center justify-center gap-2"
+          >
+            <Plus size={16} /> Add Another Area
+          </button>
         </div>
 
-        {/* Service Areas */}
-        <div>
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Service Areas
-          </h3>
-
-          <div className="space-y-4">
-            {formData.serviceAreas.map((area, index) => (
-              <div
-                key={index}
-                className="bg-slate-900/50 border border-slate-700 rounded-xl p-4"
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-white font-medium">
-                    Service Area {index + 1}
-                  </h4>
-                  {formData.serviceAreas.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeServiceArea(index)}
-                      className="p-1 hover:bg-slate-800 rounded-lg"
-                    >
-                      <X className="w-5 h-5 text-slate-400" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-300 text-sm mb-1">
-                      Locality *
-                    </label>
-                    <input
-                      type="text"
-                      value={area.locality}
-                      onChange={(e) =>
-                        handleServiceAreaTextChange(e, index, "locality")
-                      }
-                      placeholder="e.g., Koramangala"
-                      className={`w-full px-3 py-2 bg-slate-800 border ${errors[`area_${index}_locality`] ? "border-red-500" : "border-slate-700"} rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                    />
-                    {errors[`area_${index}_locality`] && (
-                      <p className="mt-1 text-xs text-red-500">
-                        {errors[`area_${index}_locality`]}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 text-sm mb-1">
-                      City *
-                    </label>
-                    <input
-                      type="text"
-                      value={area.city}
-                      onChange={(e) =>
-                        handleServiceAreaTextChange(e, index, "city")
-                      }
-                      placeholder="e.g., Bengaluru"
-                      className={`w-full px-3 py-2 bg-slate-800 border ${errors[`area_${index}_city`] ? "border-red-500" : "border-slate-700"} rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                    />
-                    {errors[`area_${index}_city`] && (
-                      <p className="mt-1 text-xs text-red-500">
-                        {errors[`area_${index}_city`]}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 text-sm mb-1">
-                      State *
-                    </label>
-                    <input
-                      type="text"
-                      value={area.state}
-                      onChange={(e) =>
-                        handleServiceAreaTextChange(e, index, "state")
-                      }
-                      placeholder="e.g., Karnataka"
-                      className={`w-full px-3 py-2 bg-slate-800 border ${errors[`area_${index}_state`] ? "border-red-500" : "border-slate-700"} rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                    />
-                    {errors[`area_${index}_state`] && (
-                      <p className="mt-1 text-xs text-red-500">
-                        {errors[`area_${index}_state`]}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <label className="block text-slate-300 text-sm mb-1">
-                    Priority
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleServiceAreaChange(index, "priority", 1)
-                      }
-                      className={`px-3 py-1.5 rounded-lg text-sm ${area.priority === 1 ? "bg-blue-500 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
-                    >
-                      Priority 1 (Primary)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleServiceAreaChange(index, "priority", 2)
-                      }
-                      className={`px-3 py-1.5 rounded-lg text-sm ${area.priority === 2 ? "bg-blue-500 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
-                    >
-                      Priority 2 (Backup)
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={addServiceArea}
-              className="w-full p-4 border-2 border-dashed border-slate-700 hover:border-slate-600 rounded-xl text-slate-400 hover:text-slate-300 transition-colors flex flex-col items-center justify-center"
-            >
-              <Plus className="w-6 h-6 mb-2" />
-              Add Another Service Area
-            </button>
-          </div>
-        </div>
-
-        {/* Vehicle & Capacity */}
-        <div>
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <Truck className="w-5 h-5" />
-            Vehicle & Capacity
-          </h3>
-
-          <div className="space-y-6">
-            <div>
-              <label className="block text-slate-300 mb-3">Vehicle Type</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {vehicleOptions.map((vehicle) => (
-                  <button
-                    key={vehicle.value}
-                    type="button"
-                    onClick={() =>
-                      handleInputChange("vehicleType", vehicle.value)
-                    }
-                    className={`p-4 rounded-xl border ${formData.vehicleType === vehicle.value ? "border-blue-500 bg-blue-500/10" : "border-slate-700 bg-slate-900 hover:border-slate-600"} transition-colors`}
-                  >
-                    <div className="text-left">
-                      <div className="font-medium text-white mb-1">
-                        {vehicle.label}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 mb-3">
-                Daily Capacity
-              </label>
-              <div className="bg-slate-900 border border-slate-700 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-white">Maximum Tasks Per Day</span>
-                  <span className="text-2xl font-bold text-blue-400">
-                    {formData.maxTasksPerDay}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={formData.maxTasksPerDay}
-                  onChange={(e) => handleRangeInputChange(e, "maxTasksPerDay")}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-sm text-slate-500 mt-2">
-                  <span>1 task</span>
-                  <span>25 tasks</span>
-                  <span>50 tasks</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Submit Button */}
+        {/* ----------------- SUBMIT ----------------- */}
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-4 bg-blue-600 rounded-xl text-white font-bold disabled:opacity-50"
         >
-          {loading ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              <span>Saving Profile...</span>
-            </>
-          ) : (
-            <>
-              <span>Complete Setup</span>
-            </>
-          )}
+          {loading ? "Saving..." : "Complete Setup"}
         </button>
       </div>
     </div>
