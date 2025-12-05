@@ -1,6 +1,8 @@
+// lib/email-template.ts
+
 // Helper function to get the base URL based on environment
 const getBaseUrl = () => {
-  return process.env.NEXT_PUBLIC_APP_URL;
+  return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 };
 
 export const welcomeTemplate = (userName: string) => {
@@ -361,7 +363,7 @@ export const passwordResetTemplate = (userName: string, resetLink: string) => `
       </div>
       
       <div class="footer">
-        <p><strong>BinBuddy</strong> - Smart Waste Segregation & Management</p>
+        <p><strong>BinBuddy</strong> – Smart Waste Segregation & Management</p>
         <p>Community-Driven Verification | Environmental Impact Tracking</p>
         <p style="margin-top: 15px;">&copy; 2025 BinBuddy. All rights reserved.</p>
       </div>
