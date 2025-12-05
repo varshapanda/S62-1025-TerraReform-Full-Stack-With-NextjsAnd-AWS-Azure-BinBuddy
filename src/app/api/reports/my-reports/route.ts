@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { verifyToken } from "@/lib/auth";
+import { generateReadPresignedUrl } from "@/lib/s3Client";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,22 +13,59 @@ export async function GET(req: NextRequest) {
       return sendError("Unauthorized", "AUTH_ERROR", 401);
     }
 
-    // Check if the request wants all reports or just recent ones
-    const url = new URL(req.url);
-    const allReports = url.searchParams.get("all") === "true";
+    const { searchParams } = new URL(req.url);
+    const showAll = searchParams.get("all") === "true";
 
+    // ✅ UPDATED: Include task relationship
     const reports = await prisma.report.findMany({
-      where: { reporterId: String(user.id) },
-      orderBy: { createdAt: "desc" },
-      ...(allReports ? {} : { take: 10 }), // Only limit to 10 if not requesting all
-      include: {
-        images: true, // Include associated images
+      where: {
+        reporterId: String(user.id),
       },
+      include: {
+        images: true,
+        reporter: {
+          select: { id: true, name: true, email: true },
+        },
+        task: {
+          // ✅ ADDED: Include task data
+          select: {
+            id: true,
+            status: true,
+            scheduledFor: true,
+            startedAt: true,
+            completedAt: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: showAll ? undefined : 10,
     });
 
-    return sendSuccess(reports);
+    // Generate presigned URLs
+    const reportsWithSignedUrls = await Promise.all(
+      reports.map(async (report) => {
+        const signedImages = await Promise.all(
+          report.images.map(async (img) => ({
+            ...img,
+            url: await generateReadPresignedUrl(img.url),
+          }))
+        );
+
+        return {
+          ...report,
+          imageUrl: report.imageUrl
+            ? await generateReadPresignedUrl(report.imageUrl)
+            : undefined,
+          images: signedImages,
+        };
+      })
+    );
+
+    return sendSuccess(reportsWithSignedUrls);
   } catch (error) {
-    console.error("Fetch reports error:", error);
+    console.error("Fetch my reports error:", error);
     return sendError("Failed to fetch reports", "DB_ERROR", 500);
   }
 }

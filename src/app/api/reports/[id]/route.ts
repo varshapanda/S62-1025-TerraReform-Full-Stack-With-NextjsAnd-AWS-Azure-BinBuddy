@@ -28,12 +28,23 @@ export async function GET(
       return sendError("Unauthorized", "AUTH_ERROR", 401);
     }
 
+    // ✅ UPDATED: Include task relationship
     const report = await prisma.report.findUnique({
       where: { id: reportId },
       include: {
         images: true,
         reporter: {
           select: { id: true, name: true, email: true },
+        },
+        task: {
+          // ✅ ADDED: Include task data for tracking status
+          select: {
+            id: true,
+            status: true,
+            scheduledFor: true,
+            startedAt: true,
+            completedAt: true,
+          },
         },
       },
     });

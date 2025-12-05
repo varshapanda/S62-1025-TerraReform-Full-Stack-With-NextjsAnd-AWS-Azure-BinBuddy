@@ -2,6 +2,20 @@
 
 import { create } from "zustand";
 
+interface Task {
+  id: string;
+  status:
+    | "PENDING"
+    | "ASSIGNED"
+    | "SCHEDULED"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | "CANCELLED";
+  scheduledFor?: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
 interface Report {
   id: string;
   category: string;
@@ -16,6 +30,7 @@ interface Report {
   lng: number;
   address?: string;
   images?: Array<{ url: string }>;
+  task?: Task; // ✅ ADDED: Task relationship
 }
 
 interface UserStats {

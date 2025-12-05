@@ -16,6 +16,8 @@ import {
   Calendar,
   MapPin,
   ChevronRight,
+  Truck,
+  Package,
 } from "lucide-react";
 import { useUserStore } from "@/store/userStore";
 
@@ -131,7 +133,7 @@ export default function UserDashboardPage() {
           </div>
         </div>
 
-        {/* Current Report Tracking - Only show if there's a pending/in-progress report */}
+        {/* ✅ UPDATED TRACKING SECTION */}
         {reports.length > 0 &&
           reports.some(
             (r) =>
@@ -165,11 +167,13 @@ export default function UserDashboardPage() {
 
                 if (!activeReport) return null;
 
+                // ✅ UPDATED: Better status checking with task status
+                const taskStatus = activeReport.task?.status;
+
                 const steps = [
                   {
                     label: "Report Submitted",
                     description: "Your waste report has been submitted",
-                    status: "PENDING",
                     icon: FileText,
                     completed: true,
                   },
@@ -177,28 +181,31 @@ export default function UserDashboardPage() {
                     label: "Verification",
                     description:
                       "Community volunteers are verifying your report",
-                    status: "VERIFIED",
                     icon: CheckCircle,
-                    completed:
-                      activeReport.status === "VERIFIED" ||
-                      activeReport.status === "SCHEDULED" ||
-                      activeReport.status === "IN_PROGRESS",
+                    completed: activeReport.status !== "PENDING",
                   },
                   {
                     label: "Pickup Scheduled",
                     description: "Authority has scheduled waste collection",
-                    status: "SCHEDULED",
                     icon: Calendar,
                     completed:
-                      activeReport.status === "SCHEDULED" ||
-                      activeReport.status === "IN_PROGRESS",
+                      taskStatus === "SCHEDULED" ||
+                      taskStatus === "IN_PROGRESS" ||
+                      taskStatus === "COMPLETED",
                   },
                   {
                     label: "Collection in Progress",
                     description: "Waste collection vehicle is on the way",
-                    status: "IN_PROGRESS",
-                    icon: TrendingUp,
-                    completed: activeReport.status === "IN_PROGRESS",
+                    icon: Truck,
+                    completed:
+                      taskStatus === "IN_PROGRESS" ||
+                      taskStatus === "COMPLETED",
+                  },
+                  {
+                    label: "Collected",
+                    description: "Waste has been successfully collected",
+                    icon: Package,
+                    completed: taskStatus === "COMPLETED",
                   },
                 ];
 
@@ -309,7 +316,7 @@ export default function UserDashboardPage() {
                           r.status === "VERIFIED" ||
                           r.status === "SCHEDULED" ||
                           r.status === "IN_PROGRESS"
-                      )?.status === "VERIFIED"
+                      )?.task?.status === "COMPLETED"
                         ? "text-emerald-400"
                         : reports.find(
                               (r) =>
@@ -317,20 +324,41 @@ export default function UserDashboardPage() {
                                 r.status === "VERIFIED" ||
                                 r.status === "SCHEDULED" ||
                                 r.status === "IN_PROGRESS"
-                            )?.status === "PENDING"
-                          ? "text-amber-400"
-                          : "text-blue-400"
+                            )?.task?.status === "IN_PROGRESS"
+                          ? "text-blue-400"
+                          : reports.find(
+                                (r) =>
+                                  r.status === "PENDING" ||
+                                  r.status === "VERIFIED" ||
+                                  r.status === "SCHEDULED" ||
+                                  r.status === "IN_PROGRESS"
+                              )?.task?.status === "SCHEDULED"
+                            ? "text-purple-400"
+                            : reports.find(
+                                  (r) =>
+                                    r.status === "PENDING" ||
+                                    r.status === "VERIFIED" ||
+                                    r.status === "SCHEDULED" ||
+                                    r.status === "IN_PROGRESS"
+                                )?.status === "VERIFIED"
+                              ? "text-emerald-400"
+                              : "text-amber-400"
                     }`}
                   >
-                    {
+                    {reports.find(
+                      (r) =>
+                        r.status === "PENDING" ||
+                        r.status === "VERIFIED" ||
+                        r.status === "SCHEDULED" ||
+                        r.status === "IN_PROGRESS"
+                    )?.task?.status ||
                       reports.find(
                         (r) =>
                           r.status === "PENDING" ||
                           r.status === "VERIFIED" ||
                           r.status === "SCHEDULED" ||
                           r.status === "IN_PROGRESS"
-                      )?.status
-                    }
+                      )?.status}
                   </span>
                 </div>
               </div>
@@ -508,14 +536,27 @@ export default function UserDashboardPage() {
                       <div className="flex items-center gap-3">
                         <span
                           className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-                            report.status === "VERIFIED"
+                            report.task?.status === "COMPLETED"
                               ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : report.status === "PENDING"
-                                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                              : report.task?.status === "IN_PROGRESS"
+                                ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                : report.task?.status === "SCHEDULED"
+                                  ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                  : report.task?.status === "CANCELLED"
+                                    ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                    : report.task?.status === "PENDING" ||
+                                        report.task?.status === "ASSIGNED"
+                                      ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                      : report.status === "VERIFIED"
+                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                        : report.status === "PENDING"
+                                          ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                          : report.status === "REJECTED"
+                                            ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                            : "bg-slate-500/10 text-slate-400 border border-slate-500/20"
                           }`}
                         >
-                          {report.status}
+                          {report.task?.status || report.status}
                         </span>
                         <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
                       </div>

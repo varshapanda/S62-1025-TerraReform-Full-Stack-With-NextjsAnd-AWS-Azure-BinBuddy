@@ -44,6 +44,9 @@ export default function ReportTrackingPage() {
   const getTrackingSteps = () => {
     if (!report) return [];
 
+    // ✅ FIXED: Use task.status for accurate tracking
+    const taskStatus = report.task?.status;
+
     const steps = [
       {
         title: "Report Submitted",
@@ -57,29 +60,31 @@ export default function ReportTrackingPage() {
         description: "Community volunteers are verifying your report",
         date: report.verifiedAt,
         icon: CheckCircle,
-        completed: !!report.verifiedAt || report.status === "VERIFIED",
+        completed: report.status !== "PENDING",
       },
       {
         title: "Pickup Scheduled",
         description: "Authority has scheduled waste collection",
-        date: report.scheduledAt,
+        date: report.task?.scheduledFor || report.scheduledAt,
         icon: Calendar,
-        completed: !!report.scheduledAt || report.status === "SCHEDULED",
+        completed:
+          taskStatus === "SCHEDULED" ||
+          taskStatus === "IN_PROGRESS" ||
+          taskStatus === "COMPLETED",
       },
       {
         title: "Collection in Progress",
         description: "Waste collection vehicle is on the way",
-        date: report.scheduledAt,
+        date: report.task?.startedAt,
         icon: Truck,
-        completed:
-          report.status === "IN_PROGRESS" || report.status === "COMPLETED",
+        completed: taskStatus === "IN_PROGRESS" || taskStatus === "COMPLETED",
       },
       {
         title: "Collected",
         description: "Waste has been successfully collected",
-        date: report.completedAt,
+        date: report.task?.completedAt || report.completedAt,
         icon: Package,
-        completed: report.status === "COMPLETED",
+        completed: taskStatus === "COMPLETED",
       },
     ];
 
@@ -161,17 +166,20 @@ export default function ReportTrackingPage() {
                 </h1>
                 <span
                   className={`px-3 py-1 rounded-lg text-sm font-semibold ${
-                    report.status === "COMPLETED"
+                    report.task?.status === "COMPLETED"
                       ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : report.status === "VERIFIED" ||
-                          report.status === "SCHEDULED"
+                      : report.task?.status === "IN_PROGRESS"
                         ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                        : report.status === "PENDING"
-                          ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                          : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        : report.task?.status === "SCHEDULED"
+                          ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                          : report.status === "VERIFIED"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : report.status === "PENDING"
+                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                              : "bg-red-500/10 text-red-400 border border-red-500/20"
                   }`}
                 >
-                  {report.status}
+                  {report.task?.status || report.status}
                 </span>
               </div>
               <p className="text-slate-400">Report ID: {report.id}</p>
