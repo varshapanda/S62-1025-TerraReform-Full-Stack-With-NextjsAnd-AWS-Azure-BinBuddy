@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/dashboard/authority/page.tsx
 "use client";
 
@@ -8,6 +9,9 @@ import { Truck, MapPin, TrendingUp, Calendar, AlertCircle } from "lucide-react";
 import TaskCard from "@/components/tasks/TaskCard";
 import TaskModal from "@/components/tasks/TaskModal";
 import TaskFilters from "@/components/tasks/TaskFilters";
+import MessageToast from "@/components/authority/MessageToast";
+import ConfirmDialog from "@/components/authority/ConfirmDialog";
+import { useAuthorityStore } from "@/store/authorityStore";
 
 interface Stats {
   pendingTasks: number;
@@ -60,6 +64,9 @@ export default function AuthorityDashboardPage() {
     page: 1,
   });
 
+  const { showMessage, showConfirmDialog, hideConfirmDialog, confirmDialog } =
+    useAuthorityStore();
+
   useEffect(() => {
     checkProfile();
   }, []);
@@ -85,6 +92,7 @@ export default function AuthorityDashboardPage() {
       }
     } catch (error) {
       console.error("Profile check error:", error);
+      showMessage("error", "Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -100,6 +108,7 @@ export default function AuthorityDashboardPage() {
       }
     } catch (error) {
       console.error("Fetch stats error:", error);
+      showMessage("error", "Failed to load statistics");
     }
   };
 
@@ -120,41 +129,48 @@ export default function AuthorityDashboardPage() {
       }
     } catch (error) {
       console.error("Fetch tasks error:", error);
+      showMessage("error", "Failed to load tasks");
     }
   };
 
-  // ✅ FIXED: This is the corrected handleTaskAction function
   const handleTaskAction = async (
     taskId: string,
     action: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    additionalData?: Record<string, any>
+  ) => {
+    // Show confirmation for critical actions
+    if (action === "complete" || action === "cancel") {
+      showConfirmDialog({
+        title: `${action === "complete" ? "Complete" : "Cancel"} Task`,
+        message: `Are you sure you want to ${action} this task? This action cannot be undone.`,
+        confirmText: action === "complete" ? "Complete" : "Cancel Task",
+        onConfirm: () => {
+          hideConfirmDialog();
+          performTaskAction(taskId, action, additionalData);
+        },
+      });
+      return;
+    }
+
+    // For other actions, proceed directly
+    performTaskAction(taskId, action, additionalData);
+  };
+
+  const performTaskAction = async (
+    taskId: string,
+    action: string,
     additionalData?: Record<string, any>
   ) => {
     try {
-      console.log("🎯 Dashboard handleTaskAction:", {
-        taskId,
-        action,
-        additionalData,
-        additionalDataType: typeof additionalData,
-      });
-
-      // Build the payload object explicitly
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const payload: Record<string, any> = {
         action: action,
       };
 
-      // Explicitly add each property from additionalData
       if (additionalData) {
         Object.keys(additionalData).forEach((key) => {
           payload[key] = additionalData[key];
         });
       }
-
-      console.log(
-        "📤 Final payload being sent:",
-        JSON.stringify(payload, null, 2)
-      );
 
       const response = await fetch(`/api/authority/tasks/${taskId}`, {
         method: "PATCH",
@@ -162,26 +178,43 @@ export default function AuthorityDashboardPage() {
         body: JSON.stringify(payload),
       });
 
-      console.log("📡 Response status:", response.status);
-
       const data = await response.json();
-      console.log("📥 API Response:", data);
 
       if (data.success) {
+        // Show appropriate success message based on action
+        let successMessage = "Task updated successfully";
+        if (action === "accept") successMessage = "Task accepted successfully";
+        if (action === "start") successMessage = "Task started successfully";
+        if (action === "complete")
+          successMessage = "Task completed successfully";
+        if (action === "cancel") successMessage = "Task cancelled successfully";
+        if (action === "schedule")
+          successMessage = "Task scheduled successfully";
+
+        showMessage("success", successMessage);
         fetchStats();
         fetchTasks();
         setSelectedTask(null);
       } else {
-        alert(data.error || "Action failed");
+        showMessage("error", data.error || "Action failed");
       }
     } catch (error) {
-      console.error("❌ Task action error:", error);
-      alert("Failed to perform action");
+      console.error("Task action error:", error);
+      showMessage("error", "Failed to perform action");
     }
   };
 
   const handleOptimizeRoute = () => {
-    router.push("/dashboard/authority/route-optimizer");
+    showConfirmDialog({
+      title: "Optimize Route",
+      message:
+        "This will optimize your route for all assigned and scheduled tasks. Continue?",
+      confirmText: "Optimize",
+      onConfirm: () => {
+        hideConfirmDialog();
+        router.push("/dashboard/authority/route-optimizer");
+      },
+    });
   };
 
   if (loading) {
@@ -195,11 +228,23 @@ export default function AuthorityDashboardPage() {
   }
 
   if (!profileComplete) {
-    return null; // Will redirect to setup
+    return null;
   }
 
   return (
     <DashboardLayout role="authority">
+      <MessageToast />
+      {confirmDialog?.isOpen && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={hideConfirmDialog}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+        />
+      )}
+
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start">

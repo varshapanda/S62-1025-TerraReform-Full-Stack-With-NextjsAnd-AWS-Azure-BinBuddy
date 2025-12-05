@@ -4,6 +4,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
+import MessageToast from "@/components/authority/MessageToast";
+import ConfirmDialog from "@/components/authority/ConfirmDialog";
+import { useAuthorityStore } from "@/store/authorityStore";
 import { MapPin, Navigation, Clock, ArrowRight, Truck } from "lucide-react";
 
 interface Task {
@@ -60,6 +63,9 @@ export default function RouteOptimizerPage() {
     null
   );
 
+  const { showMessage, showConfirmDialog, hideConfirmDialog, confirmDialog } =
+    useAuthorityStore();
+
   useEffect(() => {
     fetchTasks();
   }, []);
@@ -75,18 +81,33 @@ export default function RouteOptimizerPage() {
         setTasks(data.data.tasks);
         // Auto-select all tasks
         setSelectedTasks(data.data.tasks.map((t: Task) => t.id));
+      } else {
+        showMessage("error", data.error || "Failed to load tasks");
       }
     } catch (error) {
       console.error("Fetch tasks error:", error);
+      showMessage("error", "Failed to load tasks");
     }
   };
 
   const handleOptimize = async () => {
     if (selectedTasks.length === 0) {
-      alert("Please select at least one task");
+      showMessage("error", "Please select at least one task");
       return;
     }
 
+    showConfirmDialog({
+      title: "Optimize Route",
+      message: `This will optimize the route for ${selectedTasks.length} selected task${selectedTasks.length > 1 ? "s" : ""}. Continue?`,
+      confirmText: "Optimize",
+      onConfirm: () => {
+        hideConfirmDialog();
+        performOptimization();
+      },
+    });
+  };
+
+  const performOptimization = async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/authority/optimize-route", {
@@ -102,15 +123,29 @@ export default function RouteOptimizerPage() {
 
       if (data.success) {
         setOptimizedRoute(data.data);
+        showMessage("success", "Route optimized successfully!");
       } else {
-        alert(data.error || "Optimization failed");
+        showMessage("error", data.error || "Optimization failed");
       }
     } catch (error) {
       console.error("Optimize error:", error);
-      alert("Failed to optimize route");
+      showMessage("error", "Failed to optimize route");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStartCollection = () => {
+    showConfirmDialog({
+      title: "Start Collection",
+      message:
+        "You will be redirected to your dashboard to begin the collection route. Continue?",
+      confirmText: "Start",
+      onConfirm: () => {
+        hideConfirmDialog();
+        router.push("/dashboard/authority");
+      },
+    });
   };
 
   const toggleTaskSelection = (taskId: string) => {
@@ -138,6 +173,18 @@ export default function RouteOptimizerPage() {
 
   return (
     <DashboardLayout role="authority">
+      <MessageToast />
+      {confirmDialog?.isOpen && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={hideConfirmDialog}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+        />
+      )}
+
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start">
@@ -328,7 +375,7 @@ export default function RouteOptimizerPage() {
                 Re-optimize
               </button>
               <button
-                onClick={() => router.push("/dashboard/authority")}
+                onClick={handleStartCollection}
                 className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition"
               >
                 Start Collection

@@ -4,13 +4,13 @@
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import ProfileSetup, { FormData } from "@/components/authority/ProfileSetup";
+import MessageToast from "@/components/authority/MessageToast";
 import { useAuthorityStore } from "@/store/authorityStore";
 
 export default function AuthoritySetupPage() {
   const router = useRouter();
   const { updateProfile } = useAuthorityStore();
 
-  // This receives validated data from ProfileSetup.tsx
   const handleSubmit = async (data: FormData) => {
     const success = await updateProfile({
       baseLat: data.baseLat,
@@ -32,6 +32,7 @@ export default function AuthoritySetupPage() {
 
   return (
     <DashboardLayout role="authority">
+      <MessageToast />
       <ProfileSetup onSubmit={handleSubmit} />
     </DashboardLayout>
   );

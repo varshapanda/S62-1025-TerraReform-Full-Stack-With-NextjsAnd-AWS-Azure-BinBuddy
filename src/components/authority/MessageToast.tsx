@@ -1,11 +1,12 @@
+// src/components/authority/MessageToast.tsx
 "use client";
 
 import { useEffect } from "react";
 import { CheckCircle, XCircle, X } from "lucide-react";
-import { useAdminStore } from "@/store/adminStore";
+import { useAuthorityStore } from "@/store/authorityStore";
 
 export default function MessageToast() {
-  const { message, clearMessage } = useAdminStore();
+  const { message, clearMessage } = useAuthorityStore();
 
   useEffect(() => {
     if (message) {
@@ -29,14 +30,14 @@ export default function MessageToast() {
         }`}
       >
         {message.type === "success" ? (
-          <CheckCircle size={20} />
+          <CheckCircle size={20} className="flex-shrink-0" />
         ) : (
-          <XCircle size={20} />
+          <XCircle size={20} className="flex-shrink-0" />
         )}
-        <p className="font-medium">{message.text}</p>
+        <p className="font-semibold">{message.text}</p>
         <button
           onClick={clearMessage}
-          className="ml-2 hover:opacity-70 transition"
+          className="ml-2 hover:bg-white/20 rounded p-1 transition flex-shrink-0"
         >
           <X size={16} />
         </button>

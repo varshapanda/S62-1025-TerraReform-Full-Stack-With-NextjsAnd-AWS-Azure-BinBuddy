@@ -6,6 +6,9 @@ import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import TaskCard from "@/components/tasks/TaskCard";
 import TaskModal from "@/components/tasks/TaskModal";
 import TaskFilters from "@/components/tasks/TaskFilters";
+import MessageToast from "@/components/authority/MessageToast";
+import ConfirmDialog from "@/components/authority/ConfirmDialog";
+import { useAuthorityStore } from "@/store/authorityStore";
 import { Truck, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Location {
@@ -78,6 +81,9 @@ export default function AuthorityTasksPage() {
     page: 1,
   });
 
+  const { showMessage, showConfirmDialog, hideConfirmDialog, confirmDialog } =
+    useAuthorityStore();
+
   useEffect(() => {
     fetchTasks();
   }, [filters]);
@@ -101,15 +107,41 @@ export default function AuthorityTasksPage() {
       if (data.success) {
         setTasks(data.data.tasks);
         setPagination(data.data.pagination);
+      } else {
+        showMessage("error", data.error || "Failed to load tasks");
       }
     } catch (error) {
       console.error("Fetch tasks error:", error);
+      showMessage("error", "Failed to load tasks");
     } finally {
       setLoading(false);
     }
   };
 
   const handleTaskAction = async (
+    taskId: string,
+    action: string,
+    additionalData?: AdditionalData
+  ) => {
+    // Show confirmation for critical actions
+    if (action === "complete" || action === "cancel") {
+      showConfirmDialog({
+        title: `${action === "complete" ? "Complete" : "Cancel"} Task`,
+        message: `Are you sure you want to ${action} this task? This action cannot be undone.`,
+        confirmText: action === "complete" ? "Complete" : "Cancel Task",
+        onConfirm: () => {
+          hideConfirmDialog();
+          performTaskAction(taskId, action, additionalData);
+        },
+      });
+      return;
+    }
+
+    // For other actions, proceed directly
+    performTaskAction(taskId, action, additionalData);
+  };
+
+  const performTaskAction = async (
     taskId: string,
     action: string,
     additionalData?: AdditionalData
@@ -125,14 +157,15 @@ export default function AuthorityTasksPage() {
       const data: TaskActionResponse = await response.json();
 
       if (data.success) {
+        showMessage("success", "Task updated successfully");
         fetchTasks();
         setSelectedTask(null);
       } else {
-        alert(data.error || "Action failed");
+        showMessage("error", data.error || "Action failed");
       }
     } catch (error) {
       console.error("Task action error:", error);
-      alert("Failed to perform action");
+      showMessage("error", "Failed to perform action");
     }
   };
 
@@ -144,6 +177,18 @@ export default function AuthorityTasksPage() {
 
   return (
     <DashboardLayout role="authority">
+      <MessageToast />
+      {confirmDialog?.isOpen && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={hideConfirmDialog}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+        />
+      )}
+
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -214,7 +259,6 @@ export default function AuthorityTasksPage() {
             <div className="flex items-center gap-1">
               {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(
                 (page) => {
-                  // Show first, last, current, and adjacent pages
                   if (
                     page === 1 ||
                     page === pagination.pages ||

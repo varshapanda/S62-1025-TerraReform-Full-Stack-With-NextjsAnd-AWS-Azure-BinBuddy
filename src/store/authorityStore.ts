@@ -48,20 +48,48 @@ interface UpdateProfileRequest {
   serviceAreas: ServiceArea[];
 }
 
+type MessageType = {
+  type: "success" | "error";
+  text: string;
+};
+
+interface ConfirmDialogConfig {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  confirmText?: string;
+  cancelText?: string;
+}
+
 interface AuthorityState {
   profile: AuthorityProfile | null;
   loading: boolean;
   error: string | null;
+  message: MessageType | null;
+  confirmDialog: ConfirmDialogConfig | null;
 
   fetchProfile: () => Promise<void>;
   updateProfile: (data: UpdateProfileRequest) => Promise<boolean>;
   clearProfile: () => void;
+  showMessage: (type: "success" | "error", text: string) => void;
+  clearMessage: () => void;
+  showConfirmDialog: (config: {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }) => void;
+  hideConfirmDialog: () => void;
 }
 
-export const useAuthorityStore = create<AuthorityState>((set) => ({
+export const useAuthorityStore = create<AuthorityState>((set, get) => ({
   profile: null,
   loading: false,
   error: null,
+  message: null,
+  confirmDialog: null,
 
   fetchProfile: async () => {
     set({ loading: true, error: null });
@@ -72,13 +100,14 @@ export const useAuthorityStore = create<AuthorityState>((set) => ({
       if (data.success && data.data) {
         set({ profile: data.data.profile, loading: false });
       } else {
-        set({
-          error: data.error || "Failed to fetch profile",
-          loading: false,
-        });
+        const errorMsg = data.error || "Failed to fetch profile";
+        set({ error: errorMsg, loading: false });
+        get().showMessage("error", errorMsg);
       }
     } catch (err) {
-      set({ error: "Network error", loading: false });
+      const errorMsg = "Network error";
+      set({ error: errorMsg, loading: false });
+      get().showMessage("error", errorMsg);
     }
   },
 
@@ -96,19 +125,35 @@ export const useAuthorityStore = create<AuthorityState>((set) => ({
 
       if (json.success && json.data) {
         set({ profile: json.data.profile, loading: false });
+        get().showMessage("success", "Profile updated successfully");
         return true;
       }
 
-      set({
-        loading: false,
-        error: json.error || "Failed to update profile",
-      });
+      const errorMsg = json.error || "Failed to update profile";
+      set({ loading: false, error: errorMsg });
+      get().showMessage("error", errorMsg);
       return false;
     } catch (err) {
-      set({ error: "Network error", loading: false });
+      const errorMsg = "Network error";
+      set({ error: errorMsg, loading: false });
+      get().showMessage("error", errorMsg);
       return false;
     }
   },
 
   clearProfile: () => set({ profile: null, error: null }),
+
+  showMessage: (type, text) => {
+    set({ message: { type, text } });
+  },
+
+  clearMessage: () => set({ message: null }),
+
+  showConfirmDialog: (config) => {
+    set({ confirmDialog: { isOpen: true, ...config } });
+  },
+
+  hideConfirmDialog: () => {
+    set({ confirmDialog: null });
+  },
 }));

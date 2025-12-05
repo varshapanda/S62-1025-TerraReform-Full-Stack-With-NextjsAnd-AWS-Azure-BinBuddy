@@ -6,14 +6,36 @@ import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import { useAuthorityStore } from "@/store/authorityStore";
 import { MapPin, Truck, Edit, CheckCircle, TrendingUp } from "lucide-react";
+import MessageToast from "@/components/authority/MessageToast";
+import ConfirmDialog from "@/components/authority/ConfirmDialog";
 
 export default function AuthorityProfilePage() {
   const router = useRouter();
-  const { profile, loading, fetchProfile } = useAuthorityStore();
+  const {
+    profile,
+    loading,
+    fetchProfile,
+    showConfirmDialog,
+    hideConfirmDialog,
+    confirmDialog,
+  } = useAuthorityStore();
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleEditProfile = () => {
+    showConfirmDialog({
+      title: "Edit Profile",
+      message:
+        "You will be redirected to the profile setup page. Any unsaved changes will be lost. Continue?",
+      confirmText: "Continue",
+      onConfirm: () => {
+        hideConfirmDialog();
+        router.push("/dashboard/authority/setup");
+      },
+    });
+  };
 
   if (loading) {
     return (
@@ -43,6 +65,18 @@ export default function AuthorityProfilePage() {
 
   return (
     <DashboardLayout role="authority">
+      <MessageToast />
+      {confirmDialog?.isOpen && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={hideConfirmDialog}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+        />
+      )}
+
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start">
@@ -53,7 +87,7 @@ export default function AuthorityProfilePage() {
             </p>
           </div>
           <button
-            onClick={() => router.push("/dashboard/authority/setup")}
+            onClick={handleEditProfile}
             className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
           >
             <Edit className="w-4 h-4" />
