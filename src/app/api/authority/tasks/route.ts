@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { verifyToken } from "@/lib/auth";
+import { generateReadPresignedUrl } from "@/lib/s3Client";
 
 type TaskStatus =
   | "PENDING"
@@ -23,11 +24,6 @@ function isValidPriority(priority: string | null): priority is Priority {
   return ["URGENT", "HIGH", "MEDIUM", "LOW"].includes(priority || "");
 }
 
-//
-// ==========================
-//          GET (FIXED)
-// ==========================
-//
 export async function GET(req: NextRequest) {
   try {
     const { success, user } = verifyToken(req);
@@ -69,7 +65,7 @@ export async function GET(req: NextRequest) {
       where.priority = priorityParam;
     }
 
-    // FIXED — PROPER NESTED REPORT FILTER
+    // CITY FILTER
     where.report = {};
 
     if (city) {
@@ -80,7 +76,6 @@ export async function GET(req: NextRequest) {
       if (serviceCities.length > 0) {
         where.report.city = { in: serviceCities };
       } else {
-        // No service cities → show all tasks
         delete where.report.city;
       }
     }
@@ -106,10 +101,32 @@ export async function GET(req: NextRequest) {
       prisma.task.count({ where }),
     ]);
 
+    // ✅ Generate presigned URLs for all task images
+    const tasksWithPresignedUrls = await Promise.all(
+      tasks.map(async (task) => {
+        if (task.report?.images && task.report.images.length > 0) {
+          const imagesWithPresignedUrls = await Promise.all(
+            task.report.images.map(async (image) => ({
+              ...image,
+              url: await generateReadPresignedUrl(image.url, 3600),
+            }))
+          );
+          return {
+            ...task,
+            report: {
+              ...task.report,
+              images: imagesWithPresignedUrls,
+            },
+          };
+        }
+        return task;
+      })
+    );
+
     return NextResponse.json({
       success: true,
       data: {
-        tasks,
+        tasks: tasksWithPresignedUrls,
         pagination: {
           page,
           limit,
@@ -127,11 +144,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-//
-// ==========================
-//        POST (unchanged)
-// ==========================
-//
 export async function POST(req: NextRequest) {
   try {
     const { success, user } = verifyToken(req);
@@ -247,10 +259,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-//
-// ==========================
-//     HELPER
-// ==========================
 async function getUserServiceCities(userId: string): Promise<string[]> {
   const areas = await prisma.authorityServiceArea.findMany({
     where: { authorityId: userId },

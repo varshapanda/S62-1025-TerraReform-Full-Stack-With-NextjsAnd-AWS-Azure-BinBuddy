@@ -27,15 +27,23 @@ interface Task {
   status: string;
   priority: string;
   scheduledFor?: string;
+  startedAt?: string;
+  completedAt?: string;
   location?: {
     address: string;
+    lat?: number;
+    lng?: number;
   };
   report?: {
     category: string;
+    note?: string;
     reporter?: {
       name: string;
       email: string;
     };
+    images?: {
+      url: string;
+    }[];
   };
 }
 
@@ -115,15 +123,49 @@ export default function AuthorityDashboardPage() {
     }
   };
 
-  const handleTaskAction = async (taskId: string, action: string) => {
+  // ✅ FIXED: This is the corrected handleTaskAction function
+  const handleTaskAction = async (
+    taskId: string,
+    action: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    additionalData?: Record<string, any>
+  ) => {
     try {
+      console.log("🎯 Dashboard handleTaskAction:", {
+        taskId,
+        action,
+        additionalData,
+        additionalDataType: typeof additionalData,
+      });
+
+      // Build the payload object explicitly
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload: Record<string, any> = {
+        action: action,
+      };
+
+      // Explicitly add each property from additionalData
+      if (additionalData) {
+        Object.keys(additionalData).forEach((key) => {
+          payload[key] = additionalData[key];
+        });
+      }
+
+      console.log(
+        "📤 Final payload being sent:",
+        JSON.stringify(payload, null, 2)
+      );
+
       const response = await fetch(`/api/authority/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify(payload),
       });
 
+      console.log("📡 Response status:", response.status);
+
       const data = await response.json();
+      console.log("📥 API Response:", data);
 
       if (data.success) {
         fetchStats();
@@ -133,7 +175,7 @@ export default function AuthorityDashboardPage() {
         alert(data.error || "Action failed");
       }
     } catch (error) {
-      console.error("Task action error:", error);
+      console.error("❌ Task action error:", error);
       alert("Failed to perform action");
     }
   };

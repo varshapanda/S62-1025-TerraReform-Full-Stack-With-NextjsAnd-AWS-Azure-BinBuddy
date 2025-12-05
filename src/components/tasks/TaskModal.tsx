@@ -45,14 +45,9 @@ interface TaskModalProps {
   onAction: (
     taskId: string,
     action: string,
-    data?: AdditionalActionData
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data?: Record<string, any>
   ) => Promise<void>;
-}
-
-interface AdditionalActionData {
-  scheduledFor?: string;
-  notes?: string;
-  [key: string]: string | undefined;
 }
 
 export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
@@ -63,12 +58,25 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
 
   const handleAction = async (
     action: string,
-    additionalData?: AdditionalActionData
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    additionalData?: Record<string, any>
   ) => {
     setLoading(true);
     setActionType(action);
     try {
+      console.log("🔄 TaskModal handleAction called:", {
+        action,
+        additionalData,
+        taskId: task.id,
+      });
+
       await onAction(task.id, action, additionalData);
+
+      console.log("✅ Action completed successfully");
+      onClose();
+    } catch (error) {
+      console.error("❌ Action failed:", error);
+      alert("Failed to perform action. Please try again.");
     } finally {
       setLoading(false);
       setActionType(null);
@@ -76,7 +84,39 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
   };
 
   const handleScheduleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setScheduleDate(e.target.value);
+    const value = e.target.value;
+    setScheduleDate(value);
+    console.log("📅 Schedule date changed:", value);
+  };
+
+  const handleScheduleSubmit = () => {
+    if (!scheduleDate) {
+      alert("Please select a date and time");
+      return;
+    }
+
+    try {
+      // Convert datetime-local value to ISO string
+      const dateObj = new Date(scheduleDate);
+
+      if (isNaN(dateObj.getTime())) {
+        alert("Invalid date selected");
+        return;
+      }
+
+      const isoDate = dateObj.toISOString();
+
+      console.log("🚀 Scheduling task:", {
+        rawInput: scheduleDate,
+        dateObj: dateObj,
+        isoDate: isoDate,
+      });
+
+      handleAction("schedule", { scheduledFor: isoDate });
+    } catch (error) {
+      console.error("Date conversion error:", error);
+      alert("Failed to process date. Please try again.");
+    }
   };
 
   const handleNotesChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -184,7 +224,7 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
             </div>
           )}
 
-          {/* Schedule - ✅ Using imported formatDateTime */}
+          {/* Schedule */}
           {task.scheduledFor && (
             <div>
               <h4 className="text-sm font-semibold text-slate-400 mb-2 flex items-center gap-2">
@@ -251,7 +291,7 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
             </div>
           )}
 
-          {/* Schedule Form - ✅ Using imported functions */}
+          {/* Schedule Form */}
           {canSchedule && actionType === "schedule" && (
             <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
               <h4 className="text-white font-semibold mb-3">
@@ -266,19 +306,14 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
               />
               {scheduleDate && (
                 <p className="text-sm text-slate-400 mt-2">
-                  Will be scheduled for:{" "}
-                  {formatDateTime(new Date(scheduleDate).toISOString())}
+                  Selected: {new Date(scheduleDate).toLocaleString()}
                 </p>
               )}
               <div className="flex gap-2 mt-3">
                 <button
-                  onClick={() => {
-                    // Convert to ISO format before sending
-                    const isoDate = new Date(scheduleDate).toISOString();
-                    handleAction("schedule", { scheduledFor: isoDate });
-                  }}
+                  onClick={handleScheduleSubmit}
                   disabled={!scheduleDate || loading}
-                  className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
                 >
                   {loading ? "Scheduling..." : "Confirm Schedule"}
                 </button>
@@ -287,7 +322,8 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
                     setActionType(null);
                     setScheduleDate("");
                   }}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  disabled={loading}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-medium"
                 >
                   Cancel
                 </button>
@@ -311,7 +347,7 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
                 <button
                   onClick={() => handleAction("complete", { notes })}
                   disabled={loading}
-                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
                 >
                   {loading ? "Completing..." : "Mark as Complete"}
                 </button>
@@ -320,7 +356,8 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
                     setActionType(null);
                     setNotes("");
                   }}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                  disabled={loading}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-medium"
                 >
                   Cancel
                 </button>
@@ -347,6 +384,7 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
               {canSchedule && (
                 <button
                   onClick={() => setActionType("schedule")}
+                  disabled={loading}
                   className="py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition"
                 >
                   Schedule
@@ -366,6 +404,7 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
               {canComplete && (
                 <button
                   onClick={() => setActionType("complete")}
+                  disabled={loading}
                   className="py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition"
                 >
                   Complete

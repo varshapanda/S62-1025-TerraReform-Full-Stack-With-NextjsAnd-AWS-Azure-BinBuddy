@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
         },
       }),
 
-      // Tasks assigned to me
+      // Tasks assigned to me (not yet scheduled or started)
       prisma.task.count({
         where: {
           assignedToId: userId,
@@ -59,12 +59,11 @@ export async function GET(req: NextRequest) {
         },
       }),
 
-      // Tasks scheduled for future
+      // ✅ FIXED: Count all scheduled tasks (regardless of scheduledFor time)
       prisma.task.count({
         where: {
           assignedToId: userId,
           status: "SCHEDULED",
-          scheduledFor: { gt: new Date() },
         },
       }),
 
@@ -116,7 +115,7 @@ export async function GET(req: NextRequest) {
         completedToday,
         totalCompleted,
         tasksThisWeek,
-        efficiency,
+        efficiency: Math.round(efficiency),
         avgCompletionTime: efficiencyScore?.avgCompletionTime || 0,
         dailyCapacity: await getUserDailyCapacity(userId),
       },

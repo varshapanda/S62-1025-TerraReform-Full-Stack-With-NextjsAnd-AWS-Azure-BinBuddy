@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { TaskStatus } from "@prisma/client";
+import { generateReadPresignedUrl } from "@/lib/s3Client";
 
 // Define TypeScript interfaces
 interface TaskActionRequest {
@@ -95,6 +96,25 @@ export async function GET(
       );
     }
 
+    // ✅ Generate presigned URLs for all images
+    if (task.report?.images && task.report.images.length > 0) {
+      const imagesWithPresignedUrls = await Promise.all(
+        task.report.images.map(async (image) => ({
+          ...image,
+          url: await generateReadPresignedUrl(image.url, 3600),
+        }))
+      );
+      task.report.images = imagesWithPresignedUrls;
+    }
+
+    // ✅ Also generate presigned URL for the main report image if it exists
+    if (task.report?.imageUrl) {
+      task.report.imageUrl = await generateReadPresignedUrl(
+        task.report.imageUrl,
+        3600
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: { task },
@@ -123,7 +143,6 @@ export async function PATCH(
     }
     const userId = user.id;
 
-    // ✅ FIX: Don't destructure here, keep the entire body
     const body: TaskActionRequest = await req.json();
     const { action } = body;
 
@@ -176,7 +195,6 @@ export async function PATCH(
         break;
 
       case "schedule":
-        // ✅ FIX: Access scheduledFor from body, not data
         console.log("📅 Schedule data:", {
           scheduledFor: body.scheduledFor,
           type: typeof body.scheduledFor,
@@ -292,10 +310,24 @@ export async function PATCH(
                 email: true,
               },
             },
+            images: {
+              orderBy: { createdAt: "desc" },
+            },
           },
         },
       },
     });
+
+    // ✅ Generate presigned URLs for images in the response
+    if (updatedTask.report?.images && updatedTask.report.images.length > 0) {
+      const imagesWithPresignedUrls = await Promise.all(
+        updatedTask.report.images.map(async (image) => ({
+          ...image,
+          url: await generateReadPresignedUrl(image.url, 3600),
+        }))
+      );
+      updatedTask.report.images = imagesWithPresignedUrls;
+    }
 
     // Send notification for all actions
     await sendTaskNotification(taskId, action, task.reportId, userId, body);
