@@ -1,4 +1,12 @@
-export const welcomeTemplate = (userName: string) => `
+// Helper function to get the base URL based on environment
+const getBaseUrl = () => {
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+};
+
+export const welcomeTemplate = (userName: string) => {
+  const baseUrl = getBaseUrl();
+
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -165,7 +173,7 @@ export const welcomeTemplate = (userName: string) => `
         </ul>
 
         <div class="button-container">
-          <a href="http://localhost:3000/dashboard" class="button">
+          <a href="${baseUrl}/dashboard" class="button">
             Go to Dashboard
           </a>
         </div>
@@ -187,6 +195,7 @@ export const welcomeTemplate = (userName: string) => `
 </body>
 </html>
 `;
+};
 
 export const passwordResetTemplate = (userName: string, resetLink: string) => `
 <!DOCTYPE html>
@@ -352,7 +361,7 @@ export const passwordResetTemplate = (userName: string, resetLink: string) => `
       </div>
       
       <div class="footer">
-        <p><strong>BinBuddy</strong> – Smart Waste Segregation & Management</p>
+        <p><strong>BinBuddy</strong> - Smart Waste Segregation & Management</p>
         <p>Community-Driven Verification | Environmental Impact Tracking</p>
         <p style="margin-top: 15px;">&copy; 2025 BinBuddy. All rights reserved.</p>
       </div>
