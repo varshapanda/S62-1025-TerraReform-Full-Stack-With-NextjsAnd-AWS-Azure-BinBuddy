@@ -13,24 +13,21 @@ const ROLE_PERMISSIONS: Record<string, RegExp[]> = {
     /^\/api\/uploads\/presign/, // Upload images
     /^\/api\/user\/profile/, // View own profile
     /^\/api\/volunteer-request$/, // Create volunteer request
+    /^\/api\/leaderboard/, // Access leaderboard
   ],
   volunteer: [
     /^\/api\/volunteer/,
     /^\/api\/reports\/.*\/verify/, // Verify reports
     /^\/api\/reports\/pending/, // View pending reports
     /^\/api\/uploads\/presign/, // Upload images
+    /^\/api\/leaderboard/, // Access leaderboard
   ],
   authority: [
     /^\/api\/tasks/, // Manage tasks
     /^\/api\/reports\/verified/, // View verified reports
     /^\/api\/uploads\/presign/, // Upload images
     /^\/api\/authority/, // Allow ALL authority api routes
-    // /^\/api\/tasks/,
-    // /^\/api\/optimize-route/, // Optimize route
-    // /^\/api\/service-areas/, // Manage service areas
-    // /^\/api\/stats/, // View authority stats
-    //  /^\/api\/profile/,
-    //   /^\/api\/my-tasks/,
+    /^\/api\/leaderboard/, // Access leaderboard
   ],
   admin: [
     /^\/api\/admin/, // All admin routes
@@ -38,6 +35,7 @@ const ROLE_PERMISSIONS: Record<string, RegExp[]> = {
     /^\/api\/tasks/, // All task routes
     /^\/api\/users/, // All user routes
     /^\/api\/uploads/, // All upload routes
+    /^\/api\/leaderboard/, // Access leaderboard
   ],
 };
 
@@ -53,9 +51,11 @@ export function middleware(req: NextRequest) {
     "/api/auth/verify-email",
     "/api/auth/forgot-password",
     "/api/auth/reset-password",
-    "/api/leaderboard",
-    "/api/leaderboard/community",
-    "/api/leaderboard/user",
+  ];
+
+  // Public API route patterns (use startsWith for prefix matching)
+  const publicApiPatterns = [
+    "/api/leaderboard", // All leaderboard routes are public
   ];
 
   // API routes that ALL authenticated users can access (no role check)
@@ -128,9 +128,18 @@ export function middleware(req: NextRequest) {
   // === API ROUTES ===
 
   if (pathname.startsWith("/api/")) {
-    // Allow public API routes
+    // Allow public API routes (exact match)
     if (publicApiPaths.includes(pathname)) {
       console.log(`Public API route accessed: ${pathname}`);
+      return NextResponse.next();
+    }
+
+    // Allow public API patterns (prefix match)
+    const isPublicPattern = publicApiPatterns.some((pattern) =>
+      pathname.startsWith(pattern)
+    );
+    if (isPublicPattern) {
+      console.log(`Public API pattern accessed: ${pathname}`);
       return NextResponse.next();
     }
 

@@ -1,432 +1,376 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLeaderboardStore } from "@/store/leaderboardStore";
+import DashboardLayout from "@/components/dashboard/dashboardLayout";
+import {
+  Trophy,
+  Medal,
+  Award,
+  Users,
+  MapPin,
+  TrendingUp,
+  Loader2,
+  Crown,
+  Target,
+  CheckCircle,
+} from "lucide-react";
 
 export default function LeaderboardPage() {
-  const [loading, setLoading] = useState(true);
+  const {
+    topUsers,
+    topVolunteers,
+    topCommunities,
+    currentUserRank,
+    timeRange,
+    selectedCity,
+    loading,
+    setTimeRange,
+    setSelectedCity,
+    refreshAllLeaderboards,
+  } = useLeaderboardStore();
 
-  const [userPoints, setUserPoints] = useState(0);
-  const [userRank, setUserRank] = useState(0);
-  const [userTotalReports, setUserTotalReports] = useState(0);
-  const [userValidatedReports, setUserValidatedReports] = useState(0);
-
-  type CityCommunity = {
-    name: string;
-    locality: string; // Added locality field
-    impactScore: number;
-    validatedCount: number;
-    totalReports: number;
-    userCount: number;
-  };
-
-  type LeaderboardUser = {
-    id: string;
-    name: string | null;
-    points: number;
-    locality?: string; // Added optional locality field for users
-  };
-
-  const [topCityCommunity, setTopCityCommunity] =
-    useState<CityCommunity | null>(null);
-
-  const [topCityCommunities, setTopCityCommunities] = useState<CityCommunity[]>(
-    []
-  );
-
-  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
-
-  const [communityScrollPosition, setCommunityScrollPosition] = useState(0);
-
-  async function loadData() {
-    try {
-      const res = await fetch("/api/leaderboard", {
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      setUserPoints(data.userPoints || 0);
-      setUserRank(data.userRank || 0);
-      setUserTotalReports(data.userTotalReports || 0);
-      setUserValidatedReports(data.userValidatedReports || 0);
-
-      setTopCityCommunity(data.topCommunity || null);
-      setTopCityCommunities(data.topCommunities || []);
-      setLeaderboard(data.leaderboard || []);
-    } catch (err) {
-      console.error("Leaderboard fetch failed:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [activeTab, setActiveTab] = useState<
+    "users" | "volunteers" | "communities"
+  >("users");
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
 
   useEffect(() => {
-    loadData();
-    const timer = setInterval(loadData, 3000);
-    return () => clearInterval(timer);
+    refreshAllLeaderboards();
+  }, [refreshAllLeaderboards]);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const response = await fetch("/api/leaderboard/cities");
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableCities(data.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching cities:", error);
+      }
+    };
+    fetchCities();
   }, []);
 
-  const getRankBadge = (rank: number) => {
+  const getRankIcon = (rank: number) => {
+    if (rank === 1) return <Crown className="w-6 h-6 text-yellow-400" />;
+    if (rank === 2) return <Medal className="w-6 h-6 text-slate-300" />;
+    if (rank === 3) return <Award className="w-6 h-6 text-amber-600" />;
+    return <span className="text-slate-400 font-bold">#{rank}</span>;
+  };
+
+  const getRankBgColor = (rank: number) => {
     if (rank === 1)
-      return "bg-emerald-400/20 text-emerald-400 border-emerald-400/30";
-    if (rank === 2) return "bg-slate-400/20 text-slate-300 border-slate-400/30";
-    if (rank === 3) return "bg-amber-400/20 text-amber-400 border-amber-400/30";
-    return "bg-slate-700/50 text-slate-400 border-slate-600";
+      return "from-yellow-500/20 to-yellow-600/10 border-yellow-500/30";
+    if (rank === 2)
+      return "from-slate-400/20 to-slate-500/10 border-slate-400/30";
+    if (rank === 3)
+      return "from-amber-500/20 to-amber-600/10 border-amber-500/30";
+    return "from-slate-700/30 to-slate-800/30 border-slate-600/30";
   };
-
-  const scrollCommunities = (direction: "left" | "right") => {
-    const container = document.getElementById("communities-scroll");
-    if (container) {
-      const scrollAmount = 300;
-      const newPosition =
-        direction === "left"
-          ? Math.max(0, communityScrollPosition - scrollAmount)
-          : communityScrollPosition + scrollAmount;
-
-      container.scrollTo({ left: newPosition, behavior: "smooth" });
-      setCommunityScrollPosition(newPosition);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-400">Loading leaderboard...</div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8 px-4">
-      {/* SCROLLBAR STYLE */}
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #0f172a;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #34d399;
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #10b981;
-        }
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: #34d399 #0f172a;
-        }
-      `}</style>
+    <DashboardLayout role="user">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl px-6 py-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Trophy className="w-10 h-10 text-white" />
+            <div>
+              <h1 className="text-3xl font-bold text-white">Leaderboard</h1>
+              <p className="text-emerald-100">
+                Celebrating our top contributors and communities
+              </p>
+            </div>
+          </div>
 
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Leaderboard</h1>
-          <p className="text-slate-400 mt-1">
-            Track your impact and see top contributors
-          </p>
-        </div>
-
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* USER STATS */}
-          <div className="lg:w-1/4">
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 h-full flex flex-col">
-              <h3 className="text-slate-400 mb-4 text-center">Your Impact</h3>
-
-              <div className="text-center mb-6 flex-grow flex flex-col items-center justify-center">
-                <p className="text-6xl font-bold text-white mb-2">
-                  {userPoints}
-                </p>
-                <p className="text-emerald-400 text-lg">Points</p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="bg-slate-700/30 rounded-lg p-4">
-                  <p className="text-xs text-slate-400">Global Rank</p>
-                  <p className="text-2xl text-white">#{userRank}</p>
+          {/* Current User Rank Card */}
+          {currentUserRank && (
+            <div className="mt-6 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                    <Target className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white/70 text-sm">Your Rank</p>
+                    <p className="text-white text-2xl font-bold">
+                      #{currentUserRank.rank}
+                    </p>
+                  </div>
                 </div>
-
-                <div className="bg-slate-700/30 rounded-lg p-4">
-                  <p className="text-xs text-slate-400">Total Reports</p>
-                  <p className="text-2xl text-white">{userTotalReports}</p>
-                </div>
-
-                <div className="bg-slate-700/30 rounded-lg p-4">
-                  <p className="text-xs text-slate-400">Validated Reports</p>
-                  <p className="text-2xl text-emerald-400">
-                    {userValidatedReports}
+                <div className="text-right">
+                  <p className="text-white/70 text-sm">Your Points</p>
+                  <p className="text-white text-2xl font-bold">
+                    {currentUserRank.points.toLocaleString()}
                   </p>
                 </div>
               </div>
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* TOP CITY / COMMUNITY + LIST */}
-          <div className="lg:w-3/4 space-y-6">
-            {topCityCommunity && (
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <h2 className="text-xl text-white mb-2">
-                  Top State in India
-                </h2>
+        {/* Filters */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Time Range */}
+            <div>
+              <label className="block text-slate-400 text-sm mb-2">
+                Time Range
+              </label>
+              <div className="flex gap-2">
+                {(["all", "month", "week"] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                      timeRange === range
+                        ? "bg-emerald-500 text-white"
+                        : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    }`}
+                  >
+                    {range === "all"
+                      ? "All Time"
+                      : range === "month"
+                        ? "This Month"
+                        : "This Week"}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                <p className="text-3xl text-emerald-400">
-                  {topCityCommunity.name}
-                </p>
-                {topCityCommunity.locality && (
-                  <p className="text-slate-300 mt-1">
-                    Locality: {topCityCommunity.locality}
-                  </p>
-                )}
-
-                <div className="flex gap-6 mt-4">
-                  <div>
-                    <p className="text-slate-400">Validated</p>
-                    <p className="text-white">
-                      {topCityCommunity.validatedCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Total Reports</p>
-                    <p className="text-white">
-                      {topCityCommunity.totalReports}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Users</p>
-                    <p className="text-white">{topCityCommunity.userCount}</p>
-                  </div>
-                </div>
+            {/* City Filter (for communities) */}
+            {activeTab === "communities" && (
+              <div>
+                <label className="block text-slate-400 text-sm mb-2">
+                  Filter by City
+                </label>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg"
+                >
+                  <option value="ALL">All Cities</option>
+                  {availableCities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
-
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
-              <div className="p-6 border-b border-slate-700 flex items-center justify-between">
-                <h2 className="text-white font-semibold">
-                  Top Indian States
-                </h2>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => scrollCommunities("left")}
-                    className="p-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-emerald-400/50 rounded-lg transition-all"
-                    aria-label="Scroll left"
-                  >
-                    <svg
-                      className="w-5 h-5 text-slate-400 hover:text-emerald-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => scrollCommunities("right")}
-                    className="p-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-emerald-400/50 rounded-lg transition-all"
-                    aria-label="Scroll right"
-                  >
-                    <svg
-                      className="w-5 h-5 text-slate-400 hover:text-emerald-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {topCityCommunities.length === 0 ? (
-                <p className="p-6 text-slate-500 text-center">
-                  No Indian State/city data available
-                </p>
-              ) : (
-                <div
-                  id="communities-scroll"
-                  className="max-h-[300px] overflow-y-auto custom-scrollbar"
-                  onScroll={(e) =>
-                    setCommunityScrollPosition(e.currentTarget.scrollLeft)
-                  }
-                >
-                  <table className="w-full">
-                    <thead className="bg-slate-800 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-emerald-400">
-                          Rank
-                        </th>
-                        <th className="px-6 py-3 text-left text-emerald-400">
-                          State
-                        </th>
-                        <th className="px-6 py-3 text-left text-emerald-400">
-                          Locality
-                        </th>
-                        <th className="px-6 py-3 text-right text-emerald-400">
-                          Impact
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {topCityCommunities.map((c, i) => (
-                        <tr
-                          key={c.name}
-                          className="border-t border-slate-700 hover:bg-slate-700/20 transition-colors"
-                        >
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-3 py-1 border rounded ${getRankBadge(
-                                i + 1
-                              )}`}
-                            >
-                              {i + 1}
-                            </span>
-                          </td>
-
-                          <td className="px-6 py-4 text-white">{c.name}</td>
-
-                          <td className="px-6 py-4 text-slate-300">
-                            {c.locality || "N/A"}
-                          </td>
-
-                          <td className="px-6 py-4 text-right text-emerald-400">
-                            {c.impactScore}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* TOP CONTRIBUTORS */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
-          <div className="p-6 border-b border-slate-700">
-            <h2 className="text-xl font-bold text-white">Top Contributors</h2>
-            <p className="text-slate-400 text-sm mt-1">
-              Users making the biggest impact
-            </p>
+        {/* Tabs */}
+        <div className="flex gap-4">
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "users"
+                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            Top Residents
+          </button>
+          <button
+            onClick={() => setActiveTab("volunteers")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "volunteers"
+                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+            }`}
+          >
+            <CheckCircle className="w-5 h-5" />
+            Top Volunteers
+          </button>
+          <button
+            onClick={() => setActiveTab("communities")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "communities"
+                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+            }`}
+          >
+            <MapPin className="w-5 h-5" />
+            Top Communities
+          </button>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
           </div>
+        )}
 
-          {leaderboard.length === 0 ? (
-            <p className="p-6 text-slate-500 text-center">
-              No leaderboard data yet
-            </p>
-          ) : (
-            <>
-              <div className="px-6 pb-6 pt-4">
-                <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-2">
-                  {leaderboard.slice(0, 5).map((user, index) => (
-                    <div
-                      key={user.id || index}
-                      className="flex-shrink-0 w-48 bg-slate-700/30 rounded-xl p-4 border border-slate-600 hover:border-emerald-400/50 transition-colors"
-                    >
-                      <div className="flex flex-col items-center text-center space-y-3">
-                        <span
-                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border font-semibold text-sm ${getRankBadge(
-                            index + 1
-                          )}`}
-                        >
-                          {index + 1}
-                        </span>
-
-                        <div className="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center text-emerald-400 font-bold text-2xl">
-                          {user.name ? user.name.charAt(0).toUpperCase() : "?"}
-                        </div>
-
-                        <div className="w-full">
-                          <div className="text-white font-medium truncate">
-                            {user.name || "Anonymous"}
-                          </div>
-                          {user.locality && (
-                            <div className="text-slate-400 text-xs truncate mt-1">
-                              {user.locality}
+        {/* Users Leaderboard */}
+        {!loading && activeTab === "users" && (
+          <div className="space-y-3">
+            {topUsers.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                No users found for this time range
+              </div>
+            ) : (
+              topUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className={`bg-gradient-to-r ${getRankBgColor(user.rank)} border rounded-xl p-6 transition-all hover:scale-[1.02]`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 flex items-center justify-center">
+                        {getRankIcon(user.rank)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-white font-bold text-lg">
+                          {user.name}
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm text-slate-400">
+                          {user.locality && user.city && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              <span>
+                                {user.locality}, {user.city}
+                              </span>
                             </div>
                           )}
-                        </div>
-
-                        <div className="pt-2 border-t border-slate-600 w-full">
-                          <div className="text-emerald-400 font-bold text-xl">
-                            {user.points?.toLocaleString() || 0}
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>{user.verifiedReports} verified reports</span>
                           </div>
-                          <div className="text-slate-400 text-xs">points</div>
                         </div>
                       </div>
                     </div>
-                  ))}
+                    <div className="text-right">
+                      <div className="flex items-center gap-2 text-emerald-400">
+                        <TrendingUp className="w-5 h-5" />
+                        <span className="text-2xl font-bold">
+                          {user.points.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-slate-400 text-sm">points</p>
+                    </div>
+                  </div>
                 </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Volunteers Leaderboard */}
+        {!loading && activeTab === "volunteers" && (
+          <div className="space-y-3">
+            {topVolunteers.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                No volunteers found for this time range
               </div>
+            ) : (
+              topVolunteers.map((volunteer) => (
+                <div
+                  key={volunteer.id}
+                  className={`bg-gradient-to-r ${getRankBgColor(volunteer.rank)} border rounded-xl p-6 transition-all hover:scale-[1.02]`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 flex items-center justify-center">
+                        {getRankIcon(volunteer.rank)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-white font-bold text-lg">
+                          {volunteer.name}
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm text-slate-400">
+                          {volunteer.locality && volunteer.city && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              <span>
+                                {volunteer.locality}, {volunteer.city}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>
+                              {volunteer.verificationsCount} verifications
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-2 text-emerald-400">
+                        <TrendingUp className="w-5 h-5" />
+                        <span className="text-2xl font-bold">
+                          {volunteer.points.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-slate-400 text-sm">points</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
-              <div className="border-t border-slate-700">
-                <table className="w-full">
-                  <thead className="bg-slate-800">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-emerald-400">
-                        Rank
-                      </th>
-                      <th className="px-6 py-3 text-left text-emerald-400">
-                        User
-                      </th>
-                      <th className="px-6 py-3 text-left text-emerald-400">
-                        Locality
-                      </th>
-                      <th className="px-6 py-3 text-right text-emerald-400">
-                        Points
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {leaderboard.map((u, i) => (
-                      <tr
-                        key={u.id || i}
-                        className="border-t border-slate-700 hover:bg-slate-700/20 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <span
-                            className={`px-3 py-1 border rounded ${getRankBadge(
-                              i + 1
-                            )}`}
-                          >
-                            {i + 1}
-                          </span>
-                        </td>
-
-                        <td className="px-6 py-4 text-white">
-                          {u.name || "Anonymous"}
-                        </td>
-
-                        <td className="px-6 py-4 text-slate-300">
-                          {u.locality || "N/A"}
-                        </td>
-
-                        <td className="px-6 py-4 text-right text-emerald-400">
-                          {u.points} pts
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* Communities Leaderboard */}
+        {!loading && activeTab === "communities" && (
+          <div className="space-y-3">
+            {topCommunities.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                No communities found for this time range
               </div>
-            </>
-          )}
-        </div>
+            ) : (
+              topCommunities.map((community) => (
+                <div
+                  key={`${community.locality}-${community.city}`}
+                  className={`bg-gradient-to-r ${getRankBgColor(community.rank)} border rounded-xl p-6 transition-all hover:scale-[1.02]`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 flex items-center justify-center">
+                        {getRankIcon(community.rank)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-white font-bold text-lg">
+                          {community.locality}
+                        </h3>
+                        <p className="text-slate-400">{community.city}</p>
+                        <div className="flex items-center gap-4 text-sm text-slate-400 mt-2">
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>{community.activeUsers} active users</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>
+                              {community.verifiedReports} verified reports
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-2 text-emerald-400">
+                        <TrendingUp className="w-5 h-5" />
+                        <span className="text-2xl font-bold">
+                          {community.totalPoints.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-slate-400 text-sm">community points</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
