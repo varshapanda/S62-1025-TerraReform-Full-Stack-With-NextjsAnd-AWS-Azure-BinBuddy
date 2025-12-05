@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import MessageToast from "@/components/dashboard/admin/messageToast";
+import ConfirmDialog from "@/components/dashboard/admin/confirmDialog";
 import {
   CheckCircle,
   XCircle,
@@ -26,9 +27,11 @@ export default function AdminReportsPage() {
     reports,
     loading,
     reportFilterStatus,
+    confirmDialog,
     fetchReports,
     setReportFilterStatus,
     deleteReport,
+    hideConfirmDialog,
   } = useAdminStore();
 
   useEffect(() => {
@@ -63,16 +66,20 @@ export default function AdminReportsPage() {
     }
   };
 
-  const handleDelete = async (reportId: string) => {
-    if (!confirm("Are you sure you want to delete this report?")) {
-      return;
-    }
-    await deleteReport(reportId);
-  };
-
   return (
     <DashboardLayout role="admin">
       <MessageToast />
+      {confirmDialog?.isOpen && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={hideConfirmDialog}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+        />
+      )}
+
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <Link
@@ -192,7 +199,7 @@ export default function AdminReportsPage() {
                     View Details
                   </Link>
                   <button
-                    onClick={() => handleDelete(report.id)}
+                    onClick={() => deleteReport(report.id)}
                     className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition flex items-center gap-2"
                   >
                     <Trash2 size={16} />

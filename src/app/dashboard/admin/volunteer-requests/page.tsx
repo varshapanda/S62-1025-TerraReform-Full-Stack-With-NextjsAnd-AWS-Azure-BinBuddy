@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/dashboardLayout";
 import MessageToast from "@/components/dashboard/admin/messageToast";
+import ConfirmDialog from "@/components/dashboard/admin/confirmDialog";
 import {
   CheckCircle,
   XCircle,
@@ -21,9 +22,11 @@ export default function VolunteerRequestsPage() {
     loading,
     filterStatus,
     processingRequestId,
+    confirmDialog,
     fetchVolunteerRequests,
     handleVolunteerAction,
     setFilterStatus,
+    hideConfirmDialog,
   } = useAdminStore();
 
   useEffect(() => {
@@ -58,19 +61,20 @@ export default function VolunteerRequestsPage() {
     }
   };
 
-  const handleAction = async (
-    requestId: number,
-    action: "approve" | "reject"
-  ) => {
-    if (!confirm(`Are you sure you want to ${action} this request?`)) {
-      return;
-    }
-    await handleVolunteerAction(requestId, action);
-  };
-
   return (
     <DashboardLayout role="admin">
       <MessageToast />
+      {confirmDialog?.isOpen && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={hideConfirmDialog}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+        />
+      )}
+
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <Link
@@ -157,7 +161,9 @@ export default function VolunteerRequestsPage() {
                 {request.status === "PENDING" && (
                   <div className="flex gap-3 mt-4">
                     <button
-                      onClick={() => handleAction(request.id, "approve")}
+                      onClick={() =>
+                        handleVolunteerAction(request.id, "approve")
+                      }
                       disabled={processingRequestId === request.id}
                       className="flex-1 bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
@@ -169,7 +175,9 @@ export default function VolunteerRequestsPage() {
                       Approve
                     </button>
                     <button
-                      onClick={() => handleAction(request.id, "reject")}
+                      onClick={() =>
+                        handleVolunteerAction(request.id, "reject")
+                      }
                       disabled={processingRequestId === request.id}
                       className="flex-1 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
