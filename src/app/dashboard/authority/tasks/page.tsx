@@ -24,7 +24,11 @@ interface Report {
   category: string;
   reporter?: Reporter;
 }
-
+interface QuickActionData {
+  scheduledFor?: string;
+  notes?: string;
+  [key: string]: unknown;
+}
 interface Task {
   id: string;
   status: string;
@@ -61,8 +65,12 @@ interface TaskActionResponse {
   error?: string;
 }
 
-interface AdditionalData {
-  [key: string]: string | string[] | undefined;
+interface SchedulePayload {
+  [key: string]: unknown;
+}
+
+interface AdditionalData extends SchedulePayload {
+  [key: string]: unknown;
 }
 
 export default function AuthorityTasksPage() {
@@ -240,7 +248,11 @@ export default function AuthorityTasksPage() {
                   task.status === "PENDING" || task.status === "ASSIGNED"
                 }
                 onQuickAction={(action, data) =>
-                  handleTaskAction(task.id, action, data)
+                  handleTaskAction(
+                    task.id,
+                    action,
+                    data as AdditionalData | undefined
+                  )
                 }
               />
             ))}
