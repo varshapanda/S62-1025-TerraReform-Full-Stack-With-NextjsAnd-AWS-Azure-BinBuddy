@@ -3,8 +3,9 @@
 
 import { useState, ChangeEvent } from "react";
 import { X, MapPin, User, Calendar, Image as ImageIcon } from "lucide-react";
-import { formatDateTime, getMinDateTime } from "@/lib/dateUtils";
+import { formatDateTime } from "@/lib/dateUtils";
 
+/* ----------------------------- Types ----------------------------- */
 interface TaskLocation {
   address: string;
   lat?: number;
@@ -23,12 +24,11 @@ interface TaskReportImage {
 interface TaskReport {
   category: string;
   note?: string;
-  imageUrl?: string;
   reporter?: TaskReporter;
   images?: TaskReportImage[];
 }
 
-interface Task {
+export interface Task {
   id: string;
   status: string;
   priority: string;
@@ -39,43 +39,47 @@ interface Task {
   report?: TaskReport;
 }
 
+/*  
+  🔥 FIX 1: Correct ActionPayload type  
+  It MUST match the TasksPage "additionalData" shape exactly.
+*/
+type ActionPayload = {
+  [key: string]: string | string[] | undefined;
+};
+
 interface TaskModalProps {
   task: Task;
   onClose: () => void;
+
+  /*  
+    🔥 FIX 2: Update onAction type to match TasksPage 
+    This removes the red underline!
+  */
   onAction: (
     taskId: string,
     action: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data?: Record<string, any>
+    data?: { [key: string]: string | string[] | undefined }
   ) => Promise<void>;
 }
+
+/* --------------------------- Component ---------------------------- */
 
 export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
   const [loading, setLoading] = useState(false);
   const [actionType, setActionType] = useState<string | null>(null);
-  const [scheduleDate, setScheduleDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  const handleAction = async (
-    action: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    additionalData?: Record<string, any>
-  ) => {
+  /* -------------------------- Handlers --------------------------- */
+
+  const handleAction = async (action: string, data?: ActionPayload) => {
     setLoading(true);
     setActionType(action);
+
     try {
-      console.log("🔄 TaskModal handleAction called:", {
-        action,
-        additionalData,
-        taskId: task.id,
-      });
-
-      await onAction(task.id, action, additionalData);
-
-      console.log("✅ Action completed successfully");
+      await onAction(task.id, action, data);
       onClose();
     } catch (error) {
-      console.error("❌ Action failed:", error);
+      console.error(error);
       alert("Failed to perform action. Please try again.");
     } finally {
       setLoading(false);
@@ -83,47 +87,13 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
     }
   };
 
-  const handleScheduleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setScheduleDate(value);
-    console.log("📅 Schedule date changed:", value);
-  };
-
-  const handleScheduleSubmit = () => {
-    if (!scheduleDate) {
-      alert("Please select a date and time");
-      return;
-    }
-
-    try {
-      // Convert datetime-local value to ISO string
-      const dateObj = new Date(scheduleDate);
-
-      if (isNaN(dateObj.getTime())) {
-        alert("Invalid date selected");
-        return;
-      }
-
-      const isoDate = dateObj.toISOString();
-
-      console.log("🚀 Scheduling task:", {
-        rawInput: scheduleDate,
-        dateObj: dateObj,
-        isoDate: isoDate,
-      });
-
-      handleAction("schedule", { scheduledFor: isoDate });
-    } catch (error) {
-      console.error("Date conversion error:", error);
-      alert("Failed to process date. Please try again.");
-    }
-  };
-
   const handleNotesChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setNotes(e.target.value);
   };
 
-  const getStatusColor = (status: string) => {
+  /* --------------------------- UI Utils --------------------------- */
+
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case "PENDING":
         return "bg-yellow-500/10 text-yellow-400 border-yellow-500/30";
@@ -140,7 +110,7 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     switch (priority) {
       case "URGENT":
         return "text-red-400";
@@ -155,11 +125,14 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
     }
   };
 
+  /* --------------------------- Permissions --------------------------- */
+
   const canAssign = task.status === "PENDING";
-  const canSchedule = task.status === "ASSIGNED";
   const canStart = task.status === "ASSIGNED" || task.status === "SCHEDULED";
   const canComplete = task.status === "IN_PROGRESS";
   const canCancel = !["COMPLETED", "CANCELLED"].includes(task.status);
+
+  /* --------------------------- JSX --------------------------- */
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -183,9 +156,10 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
               </span>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-700 rounded-lg transition"
+            className="p-2 hover:bg-slate-700 rounded-lg"
           >
             <X className="w-6 h-6 text-slate-400" />
           </button>
@@ -196,26 +170,16 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
           {/* Location */}
           <div>
             <h4 className="text-sm font-semibold text-slate-400 mb-2 flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Location
+              <MapPin className="w-4 h-4" /> Location
             </h4>
-            <p className="text-white">
-              {task.location?.address || "No address provided"}
-            </p>
-            {task.location?.lat && task.location?.lng && (
-              <p className="text-sm text-slate-400 mt-1">
-                Coordinates: {task.location.lat.toFixed(6)},{" "}
-                {task.location.lng.toFixed(6)}
-              </p>
-            )}
+            <p className="text-white">{task.location?.address}</p>
           </div>
 
           {/* Reporter */}
           {task.report?.reporter && (
             <div>
               <h4 className="text-sm font-semibold text-slate-400 mb-2 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Reporter
+                <User className="w-4 h-4" /> Reporter
               </h4>
               <p className="text-white">{task.report.reporter.name}</p>
               <p className="text-sm text-slate-400">
@@ -224,12 +188,11 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
             </div>
           )}
 
-          {/* Schedule */}
+          {/* Scheduled */}
           {task.scheduledFor && (
             <div>
               <h4 className="text-sm font-semibold text-slate-400 mb-2 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Scheduled For
+                <Calendar className="w-4 h-4" /> Scheduled For
               </h4>
               <p className="text-white text-lg font-semibold">
                 {formatDateTime(task.scheduledFor)}
@@ -237,38 +200,24 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
             </div>
           )}
 
-          {/* Started At */}
+          {/* Started */}
           {task.startedAt && (
-            <div>
+            <>
               <h4 className="text-sm font-semibold text-slate-400 mb-2 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Started At
+                <Calendar className="w-4 h-4" /> Started At
               </h4>
               <p className="text-white">{formatDateTime(task.startedAt)}</p>
-            </div>
+            </>
           )}
 
-          {/* Completed At */}
+          {/* Completed */}
           {task.completedAt && (
-            <div>
+            <>
               <h4 className="text-sm font-semibold text-slate-400 mb-2 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Completed At
+                <Calendar className="w-4 h-4" /> Completed At
               </h4>
               <p className="text-white">{formatDateTime(task.completedAt)}</p>
-            </div>
-          )}
-
-          {/* Note */}
-          {task.report?.note && (
-            <div>
-              <h4 className="text-sm font-semibold text-slate-400 mb-2">
-                Note from Reporter
-              </h4>
-              <p className="text-white bg-slate-900/50 p-3 rounded-lg">
-                {task.report.note}
-              </p>
-            </div>
+            </>
           )}
 
           {/* Images */}
@@ -291,46 +240,6 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
             </div>
           )}
 
-          {/* Schedule Form */}
-          {canSchedule && actionType === "schedule" && (
-            <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
-              <h4 className="text-white font-semibold mb-3">
-                Schedule Collection
-              </h4>
-              <input
-                type="datetime-local"
-                value={scheduleDate}
-                onChange={handleScheduleDateChange}
-                min={getMinDateTime()}
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition"
-              />
-              {scheduleDate && (
-                <p className="text-sm text-slate-400 mt-2">
-                  Selected: {new Date(scheduleDate).toLocaleString()}
-                </p>
-              )}
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleScheduleSubmit}
-                  disabled={!scheduleDate || loading}
-                  className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
-                >
-                  {loading ? "Scheduling..." : "Confirm Schedule"}
-                </button>
-                <button
-                  onClick={() => {
-                    setActionType(null);
-                    setScheduleDate("");
-                  }}
-                  disabled={loading}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-medium"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Complete Form */}
           {canComplete && actionType === "complete" && (
             <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
@@ -340,24 +249,22 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
               <textarea
                 value={notes}
                 onChange={handleNotesChange}
-                placeholder="Add any notes about the collection..."
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 min-h-[100px] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
+                placeholder="Add notes..."
+                className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white min-h-[100px]"
               />
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={() => handleAction("complete", { notes })}
                   disabled={loading}
-                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
+                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg"
                 >
                   {loading ? "Completing..." : "Mark as Complete"}
                 </button>
+
                 <button
-                  onClick={() => {
-                    setActionType(null);
-                    setNotes("");
-                  }}
+                  onClick={() => setActionType(null)}
                   disabled={loading}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-medium"
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
                 >
                   Cancel
                 </button>
@@ -366,7 +273,7 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
           )}
         </div>
 
-        {/* Actions */}
+        {/* Action Buttons */}
         {!actionType && (
           <div className="border-t border-slate-700 p-6">
             <div className="grid grid-cols-2 gap-3">
@@ -374,51 +281,39 @@ export default function TaskModal({ task, onClose, onAction }: TaskModalProps) {
                 <button
                   onClick={() => handleAction("assign")}
                   disabled={loading}
-                  className="py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold disabled:opacity-50 transition"
+                  className="py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold"
                 >
-                  {loading && actionType === "assign"
-                    ? "Assigning..."
-                    : "Assign to Me"}
+                  Assign to Me
                 </button>
               )}
-              {canSchedule && (
-                <button
-                  onClick={() => setActionType("schedule")}
-                  disabled={loading}
-                  className="py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition"
-                >
-                  Schedule
-                </button>
-              )}
+
               {canStart && (
                 <button
                   onClick={() => handleAction("start")}
                   disabled={loading}
-                  className="py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold disabled:opacity-50 transition"
+                  className="py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold"
                 >
-                  {loading && actionType === "start"
-                    ? "Starting..."
-                    : "Start Collection"}
+                  Start Collection
                 </button>
               )}
+
               {canComplete && (
                 <button
                   onClick={() => setActionType("complete")}
                   disabled={loading}
-                  className="py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition"
+                  className="py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold"
                 >
                   Complete
                 </button>
               )}
+
               {canCancel && (
                 <button
                   onClick={() => handleAction("cancel")}
                   disabled={loading}
-                  className="py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg font-semibold disabled:opacity-50 transition"
+                  className="py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg font-semibold"
                 >
-                  {loading && actionType === "cancel"
-                    ? "Cancelling..."
-                    : "Cancel Task"}
+                  Cancel Task
                 </button>
               )}
             </div>

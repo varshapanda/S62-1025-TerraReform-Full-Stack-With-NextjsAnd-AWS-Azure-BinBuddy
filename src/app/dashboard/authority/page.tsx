@@ -340,7 +340,9 @@ export default function AuthorityDashboardPage() {
                   showActions={
                     task.status === "PENDING" || task.status === "ASSIGNED"
                   }
-                  onQuickAction={(action) => handleTaskAction(task.id, action)}
+                  onQuickAction={(action, data) =>
+                    handleTaskAction(task.id, action, data)
+                  }
                 />
               ))}
             </div>

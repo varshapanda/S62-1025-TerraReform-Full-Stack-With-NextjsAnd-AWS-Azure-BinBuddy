@@ -65,18 +65,20 @@ export async function GET(req: NextRequest) {
       where.priority = priorityParam;
     }
 
-    // CITY FILTER
-    where.report = {};
+    // 🚨 CITY FILTER — only apply for NON-PENDING tasks
+    if (status !== "PENDING") {
+      where.report = {};
 
-    if (city) {
-      where.report.city = city;
-    } else {
-      const serviceCities = await getUserServiceCities(userId);
-
-      if (serviceCities.length > 0) {
-        where.report.city = { in: serviceCities };
+      if (city) {
+        where.report.city = city;
       } else {
-        delete where.report.city;
+        const serviceCities = await getUserServiceCities(userId);
+
+        if (serviceCities.length > 0) {
+          where.report.city = { in: serviceCities };
+        } else {
+          delete where.report.city;
+        }
       }
     }
 
@@ -101,7 +103,7 @@ export async function GET(req: NextRequest) {
       prisma.task.count({ where }),
     ]);
 
-    // ✅ Generate presigned URLs for all task images
+    // PRESIGNED IMAGE URLS
     const tasksWithPresignedUrls = await Promise.all(
       tasks.map(async (task) => {
         if (task.report?.images && task.report.images.length > 0) {
